@@ -15,7 +15,6 @@ import { listBuyersWithSupplier } from "@/lib/queries";
 import { getStore } from "@/lib/db";
 import { emailMode } from "@/lib/config";
 import { FUNNEL_STAGES, getStage } from "@/lib/pipeline";
-import { AutoSendToggle } from "@/components/auto-send";
 import { PageHeader } from "@/components/page-header";
 import { StageBadge } from "@/components/stage-select";
 import { Badge, Card, EmptyState, cx, formatDate, formatMoney, relativeTime } from "@/components/ui";
@@ -70,7 +69,6 @@ export default async function DashboardPage() {
         sub={`Pipeline xuất khẩu của phòng sale · ${new Date().toLocaleDateString("vi-VN", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })}`}
         actions={
           <>
-            <AutoSendToggle />
             <Link href="/buyers/new" className="btn btn-primary">
               <UserPlus className="h-4 w-4" />
               Thêm buyer

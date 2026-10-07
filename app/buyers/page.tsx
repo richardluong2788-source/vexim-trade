@@ -3,7 +3,6 @@ import { KanbanSquare, UserPlus } from "lucide-react";
 
 import { listBuyersWithSupplier } from "@/lib/queries";
 import { getStore } from "@/lib/db";
-import { AutoSendToggle } from "@/components/auto-send";
 import { PageHeader } from "@/components/page-header";
 import { BuyerTable } from "@/components/buyer-table";
 
@@ -24,7 +23,6 @@ export default async function BuyersPage() {
         sub={`${buyers.length} khách hàng · đổi trạng thái ngay trên dòng để gửi email cập nhật cho buyer và nhà cung cấp`}
         actions={
           <>
-            <AutoSendToggle />
             <Link href="/pipeline" className="btn btn-ghost">
               <KanbanSquare className="h-4 w-4" />
               Xem pipeline

@@ -6,7 +6,6 @@ import { dataMode } from "@/lib/db";
 import { emailMode } from "@/lib/config";
 import { Sidebar } from "@/components/sidebar";
 import { ToastProvider } from "@/components/toast";
-import { AutoSendProvider } from "@/components/auto-send";
 
 export const metadata: Metadata = {
   title: {
@@ -34,14 +33,12 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="vi">
       <body>
         <ToastProvider>
-          <AutoSendProvider>
           <Sidebar dataMode={dbMode} emailMode={mailMode} />
           <div className="lg:pl-60">
             <main className="mx-auto min-h-screen w-full max-w-[1500px] px-4 pt-16 pb-16 sm:px-6 lg:px-8 lg:pt-8">
               {children}
             </main>
           </div>
-          </AutoSendProvider>
         </ToastProvider>
       </body>
     </html>

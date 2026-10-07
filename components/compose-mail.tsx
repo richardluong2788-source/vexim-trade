@@ -176,11 +176,6 @@ export function ComposeMail({
         </button>
         <span className="text-[13px] font-bold text-ink-900">Soạn thư mới</span>
 
-        <span className="ml-auto inline-flex items-center gap-1.5 rounded-lg border border-ink-300 bg-white px-3 py-1.5 text-[12.5px] font-semibold text-ink-600">
-          {isBuyerDir ? <Mail className="h-3.5 w-3.5 text-brand-600" /> : <Users className="h-3.5 w-3.5 text-amber-600" />}
-          {isBuyerDir ? "Gửi buyer" : "Gửi nhà cung cấp"}
-          {locked && <span className="text-ink-400">· cố định từ hồ sơ</span>}
-        </span>
       </div>
 
       {/* Người nhận */}

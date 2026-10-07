@@ -3,7 +3,6 @@ import { UserPlus } from "lucide-react";
 
 import { listBuyersWithSupplier } from "@/lib/queries";
 import { getStage } from "@/lib/pipeline";
-import { AutoSendToggle } from "@/components/auto-send";
 import { PageHeader } from "@/components/page-header";
 import { PipelineBoard } from "@/components/pipeline-board";
 
@@ -28,7 +27,6 @@ export default async function PipelinePage({
         sub={`${active.length} đơn đang chạy · giá trị ${value.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 })} · kéo thả thẻ để đổi trạng thái, hệ thống sẽ gửi email cập nhật cho buyer và NCC`}
         actions={
           <>
-            <AutoSendToggle />
             <Link href="/buyers" className="btn btn-ghost">
               Xem dạng bảng
             </Link>
