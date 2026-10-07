@@ -7,6 +7,7 @@ import {
   saveDraft,
   sendManualMail,
   sendStageUpdate,
+  sendSupplierAssigned,
   transport,
 } from "@/lib/email/send";
 import { getStage, isStage } from "@/lib/pipeline";
@@ -269,6 +270,7 @@ export async function attachSupplierAction(
   const store = getStore();
   const buyer = await store.getBuyer(buyerId);
   if (!buyer) return { ok: false, message: "Không tìm thấy khách hàng." };
+  const details: string[] = [];
   try {
     await store.updateBuyer(buyerId, { supplier_id: supplierId });
     const sup = supplierId ? await store.getSupplier(supplierId) : null;
@@ -278,10 +280,28 @@ export async function attachSupplierAction(
       message: sup ? `Gắn nhà cung cấp: ${sup.name}` : "Đã gỡ nhà cung cấp",
       created_by: buyer.owner,
     });
+
+    // GÁN NCC => hệ thống tự bắn email cho supplier báo "có buyer đã kết nối"
+    if (sup) {
+      const assigned = await sendSupplierAssigned(buyer, sup);
+      if (assigned.ok) {
+        details.push(
+          `${assigned.status === "simulated" ? "[DEMO] Đã tạo" : "Đã gửi"} email thông báo kết nối → NCC ${sup.email}`,
+        );
+      } else {
+        details.push(`Không gửi được email kết nối cho NCC: ${assigned.error}`);
+      }
+    } else {
+      details.push("Đã gỡ NCC — các email tiến độ từ giờ chỉ gửi tới buyer.");
+    }
+
     revalidateAll();
     return {
       ok: true,
-      message: sup ? `Đã gắn NCC "${sup.name}".` : "Đã gỡ NCC khỏi đơn.",
+      message: sup
+        ? `Đã gắn NCC "${sup.name}" và thông báo kết nối cho NCC.`
+        : "Đã gỡ NCC khỏi đơn.",
+      details,
     };
   } catch (err) {
     return { ok: false, message: err instanceof Error ? err.message : "Lỗi không xác định" };

@@ -86,7 +86,7 @@ export function BuyerTable({
 
   async function onAttach(buyerId: string, supplierId: string) {
     const res = await attachSupplierAction(buyerId, supplierId || null);
-    toast.push({ kind: res.ok ? "success" : "error", title: res.message });
+    toast.push({ kind: res.ok ? "success" : "error", title: res.message, lines: res.details });
     router.refresh();
   }
 

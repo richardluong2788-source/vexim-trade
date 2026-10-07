@@ -346,3 +346,91 @@ export function unwrapEmailShell(html: string): string {
   const m = html.match(/<div class="vxt-inner">([\s\S]*)<\/div><\/td>/);
   return m ? m[1] : html;
 }
+
+/* ------------------------------------------------------------------ */
+/* EMAIL GỬI SUPPLIER KHI BUYER VỪA ĐƯỢC GÁN VÀO NCC                  */
+/* Gửi MỘT LẦN lúc gán, thông báo "có buyer đã kết nối với bạn"       */
+/* ------------------------------------------------------------------ */
+export function buildSupplierAssignedEmail(opts: {
+  buyer: Buyer;
+  supplier: Supplier;
+}): EmailPayload {
+  const { buyer, supplier } = opts;
+  const hidden = buyer.hide_buyer_from_supplier !== false;
+  const buyerLabel = hidden
+    ? `Khách hàng thị trường ${buyer.country || "nước ngoài"} (ẩn danh)`
+    : `${buyer.company}${buyer.country ? ` – ${buyer.country}` : ""}`;
+
+  const summary = summaryTable(
+    [
+      { label: "Buyer", value: buyerLabel },
+      { label: "Mặt hàng", value: buyer.product ?? "—" },
+      { label: "Quy cách", value: buyer.spec ?? "—" },
+      { label: "Số lượng", value: buyer.quantity ?? "—" },
+      { label: "Điều kiện giao", value: buyer.incoterm ?? "—" },
+      { label: "Cảng đến", value: buyer.port ?? "—" },
+      { label: "Ngày giao dự kiến", value: fmtDate(buyer.expected_ship_date, "vi-VN") || "Chờ xác nhận" },
+      { label: "Mã đơn nội bộ", value: shortCode(buyer.id) },
+    ],
+    "THÔNG TIN BUYER VỪA KẾT NỐI",
+    "38%",
+  );
+
+  const tasks = [
+    "Xem thông tin đơn và xác nhận xưởng có nhận được đơn này hay không",
+    "Chuẩn bị báo giá tốt nhất cho mặt hàng và số lượng nêu trên",
+    "Cho biết thời gian giao hàng tính từ ngày nhận cọc",
+  ];
+
+  const taskBox = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#fffbeb;border-left:4px solid #d97706;border-radius:8px;margin-top:18px;">
+    <tr><td style="padding:14px 16px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+        <td style="font-size:11px;font-weight:800;color:#d97706;letter-spacing:.6px;">VIỆC CẦN LÀM</td>
+        <td align="right" style="font-size:11px;font-weight:800;color:#b45309;">HẠN: Phản hồi trong 2 ngày làm việc</td>
+      </tr></table>
+      <ol style="margin:8px 0 0;padding-left:18px;font-size:13px;line-height:20px;color:#78350f;">${tasks
+        .map((t) => `<li style="margin:0 0 7px;padding-left:2px;">${escapeHtml(t)}</li>`)
+        .join("")}</ol>
+    </td></tr>
+  </table>`;
+
+  const body = `
+    <p style="font-size:15px;line-height:24px;margin:0;">Kính gửi Anh/Chị ${escapeHtml(supplier.contact_name || supplier.name)},</p>
+    <p style="font-size:15px;line-height:24px;margin:12px 0 0;">
+      Phòng sale ${escapeHtml(COMPANY.name)} vừa <strong>kết nối một buyer mới</strong> với xưởng của Anh/Chị.
+      Từ thời điểm này, mọi cập nhật tiến độ của đơn sẽ được hệ thống tự động gửi tới Anh/Chị.
+    </p>
+    ${summary}
+    ${taskBox}
+    ${hidden ? `<p style="font-size:12px;line-height:18px;color:${MUTED};margin:16px 0 0;">Thông tin buyer được giữ kín theo chính sách bảo mật. Mọi trao đổi về giá và hợp đồng vui lòng làm việc trực tiếp với phòng sale.</p>` : ""}
+    <p style="font-size:14px;line-height:22px;margin:20px 0 0;">Trân trọng,</p>
+    ${signature(buyer.owner, "Phòng Xuất khẩu")}`;
+
+  const subject = `[${shortCode(buyer.id)}] Buyer mới được kết nối – ${fill("{product}, {quantity}", buyer)}`;
+
+  return {
+    subject,
+    html: wrapEmailShell({ title: subject, body, preheader: `Buyer mới: ${buyerLabel}` }),
+    text: [
+      subject,
+      "",
+      `Kính gửi Anh/Chị ${supplier.contact_name || supplier.name},`,
+      `Phòng sale ${COMPANY.name} vừa kết nối một buyer mới với xưởng.`,
+      "",
+      `Buyer: ${buyerLabel}`,
+      `Mặt hàng: ${buyer.product ?? "-"}`,
+      `Quy cách: ${buyer.spec ?? "-"}`,
+      `Số lượng: ${buyer.quantity ?? "-"}`,
+      "",
+      "Việc cần làm:",
+      ...tasks.map((t, i) => `${i + 1}. ${t}`),
+      "Hạn: Phản hồi trong 2 ngày làm việc",
+      "",
+      "Trân trọng,",
+      `${buyer.owner || "Phòng Xuất khẩu"} - ${COMPANY.name}`,
+      `${COMPANY.phone} | ${COMPANY.email}`,
+    ]
+      .filter(Boolean)
+      .join("\n"),
+  };
+}

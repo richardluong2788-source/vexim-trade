@@ -40,7 +40,7 @@ export function SupplierPicker({
   async function change(id: string) {
     setBusy(true);
     const res = await attachSupplierAction(buyer.id, id || null);
-    toast.push({ kind: res.ok ? "success" : "error", title: res.message });
+    toast.push({ kind: res.ok ? "success" : "error", title: res.message, lines: res.details });
     setBusy(false);
     router.refresh();
   }

@@ -4,6 +4,7 @@ import { FROM_ADDRESS, resendConfigured } from "@/lib/config";
 import { getStore } from "@/lib/db";
 import {
   buildBuyerEmail,
+  buildSupplierAssignedEmail,
   buildSupplierEmail,
   wrapEmailShell,
   type EmailPayload,
@@ -337,4 +338,42 @@ export async function saveDraft(input: ManualMailInput): Promise<string | null> 
     })
     .catch(() => null);
   return saved?.id ?? null;
+}
+
+/* ================================================================== */
+/* EMAIL KHI BUYER VỪA ĐƯỢC GÁN VÀO NCC                               */
+/* ================================================================== */
+
+export async function sendSupplierAssigned(
+  buyer: Buyer,
+  supplier: Supplier,
+): Promise<{ ok: boolean; status: "sent" | "simulated" | "failed"; error: string | null }> {
+  if (!supplier.email || !supplier.email.trim()) {
+    return { ok: false, status: "failed", error: "Nhà cung cấp chưa có email" };
+  }
+  const payload = buildSupplierAssignedEmail({ buyer, supplier });
+  const res = await transport({ to: [supplier.email.trim()], ...payload });
+  await getStore()
+    .addMessage({
+      buyer_id: buyer.id,
+      supplier_id: supplier.id,
+      kind: "auto",
+      stage: buyer.stage,
+      direction: "supplier",
+      thread_id: threadId("supplier", supplier.email.trim()),
+      subject: payload.subject,
+      to_emails: [supplier.email.trim()],
+      cc_emails: [],
+      bcc_emails: [],
+      body_html: payload.html,
+      body_text: payload.text,
+      attachments: [],
+      status: res.status,
+      provider: res.provider,
+      error: res.error,
+      created_by: buyer.owner,
+      sent_at: res.ok ? new Date().toISOString() : null,
+    })
+    .catch(() => null);
+  return { ok: res.ok, status: res.status, error: res.error };
 }

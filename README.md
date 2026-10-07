@@ -88,12 +88,20 @@ Cùng một lần đổi giai đoạn, hệ thống sinh **hai email hoàn toàn
 | Khối đặc biệt | “WHAT HAPPENS NEXT” | “VIỆC CẦN LÀM” + thời hạn phản hồi |
 | Thông tin đơn | Không có thông tin NCC | Ẩn danh buyer (mặc định) |
 
+### Tự động thông báo cho nhà cung cấp
+
+- **Khi nhân viên gán một buyer vào nhà cung cấp**, hệ thống tự gửi cho NCC một email
+  **“Buyer mới được kết nối”** kèm thông tin đơn + khối “VIỆC CẦN LÀM” (hạn 2 ngày).
+- **Sau đó, mỗi lần đổi giai đoạn**, NCC tiếp tục nhận email cập nhật tiến độ.
+- Buyer không thấy thông tin NCC; NCC mặc định chỉ thấy “khách hàng thị trường {quốc gia}”.
+
 ### Hai cách đổi trạng thái
 
 - **Dropdown** ngay trên bảng Buyer hoặc trên thẻ ở trang Pipeline (kéo-thả cũng được).
 - **Mặc định là gửi ngay**: chọn giai đoạn là hệ thống tự gửi email cho buyer và NCC.
 - Tắt công tắc **“Tự động gửi khi đổi giai đoạn”** (góc phải màn hình) nếu muốn hệ thống hiện
-  hộp xác nhận người nhận + cho phép thêm ghi chú riêng trước khi gửi.
+  hộp xác nhận người nhận + cho phép thêm ghi chú riêng trước khi gửi. Công tắc này chỉ thêm
+  bước xác nhận, không thay đổi nội dung email.
 
 ---
 
@@ -106,10 +114,9 @@ Menu **Hộp thư** / **Soạn email** — đội ngũ có thể tự viết ema
 - **Tiêu đề** + **trình soạn thảo có định dạng**: đậm, nghiêng, gạch chân, cỡ chữ, màu chữ,
   danh sách, canh lề, chèn liên kết, hoàn tác.
 - **Đính kèm tệp** (tối đa 10MB), **lưu bản nháp**, **gửi lại**, **xoá**.
-- Nút **“Chèn mẫu theo giai đoạn”**: nạp nội dung đúng của giai đoạn hiện tại vào khung soạn
-  để sửa tiếp, thay vì phải viết lại từ đầu.
 - Mở soạn trực tiếp từ trang chi tiết buyer (**Soạn email**) hoặc từ khối nhà cung cấp
-  (**Soạn email cho NCC**) — người nhận, tiêu đề và nội dung đã nạp sẵn theo giai đoạn.
+  (**Soạn email cho NCC**) — người nhận được **cố định từ hồ sơ**, chỉ việc viết nội dung.
+- Mở từ menu (không ngữ cảnh) thì gõ người nhận; hệ thống tự nhận đó là buyer hay NCC.
 
 Toàn bộ email (tự động + tự soạn) nằm chung một **Hộp thư đi**, lọc được theo người nhận
 (buyer/NCC) và theo loại (tự động / tự soạn).

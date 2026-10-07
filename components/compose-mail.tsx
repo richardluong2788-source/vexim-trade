@@ -6,6 +6,7 @@ import {
   ArrowLeft,
   FileText,
   Loader2,
+  Mail,
   Paperclip,
   Send,
   Sparkles,
@@ -15,8 +16,6 @@ import {
 } from "lucide-react";
 
 import { saveDraftAction, sendMailAction } from "@/app/actions";
-import { STAGE_CONTENT } from "@/lib/email/stage-content";
-import { STAGES, type StageKey } from "@/lib/pipeline";
 import type { Attachment, Buyer, Supplier } from "@/lib/types";
 import { RichEditor } from "@/components/rich-editor";
 import { Button, cx } from "@/components/ui";
@@ -59,7 +58,9 @@ export function ComposeMail({
   const toast = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const [direction, setDirection] = useState(initial.direction);
+  // Mở từ hồ sơ buyer/NCC thì người nhận bị khoá; mở trống thì suy ra từ địa chỉ nhập
+  const locked = Boolean(initial.buyerId || initial.supplierId);
+  const [direction, setDirection] = useState<"buyer" | "supplier">(initial.direction);
   const [to, setTo] = useState<string[]>(initial.to ?? []);
   const [cc, setCc] = useState<string[]>(initial.cc ?? []);
   const [bcc, setBcc] = useState<string[]>(initial.bcc ?? []);
@@ -71,9 +72,19 @@ export function ComposeMail({
   const [busy, setBusy] = useState(false);
   const [toInput, setToInput] = useState("");
 
+  const supplierEmails = new Set(
+    contacts.filter((c) => c.kind === "supplier").map((c) => (c.email ?? "").toLowerCase()),
+  );
+  const effectiveDirection: "buyer" | "supplier" = locked
+    ? direction
+    : to[0] && supplierEmails.has(to[0].toLowerCase())
+      ? "supplier"
+      : "buyer";
+  const isBuyerDir = effectiveDirection === "buyer";
+
   const buyerSuggestions = useMemo(
-    () => contacts.filter((c) => (direction === "buyer" ? c.kind === "buyer" : c.kind === "supplier")),
-    [contacts, direction],
+    () => (locked ? contacts.filter((c) => c.kind === effectiveDirection) : contacts),
+    [contacts, locked, effectiveDirection],
   );
 
   const totalSize = attachments.reduce((s, a) => s + a.size, 0);
@@ -121,60 +132,11 @@ export function ComposeMail({
     setAttachments((prev) => [...prev, ...next]);
   }
 
-  function insertTemplate(stage: StageKey) {
-    const isBuyer = direction === "buyer";
-    if (!STAGE_CONTENT[stage].buyer.subject) {
-      toast.push({ kind: "info", title: "Giai đoạn này không có mẫu email." });
-      return;
-    }
-    const vars: Record<string, string> = {
-      product: buyer?.product ?? "[mặt hàng]",
-      quantity: buyer?.quantity ?? "[số lượng]",
-      spec: buyer?.spec ?? "[quy cách]",
-      country: buyer?.country ?? "[quốc gia]",
-      port: buyer?.port ?? "[cảng đến]",
-      incoterm: buyer?.incoterm ?? "FOB",
-      shipdate: buyer?.expected_ship_date ?? "[ngày giao]",
-      company: buyer?.company ?? "[tên buyer]",
-      supplier: buyer?.supplier?.name ?? "[nhà cung cấp]",
-      ref: "[mã đơn]",
-    };
-    const fillLocal = (t: string) => t.replace(/\{(\w+)\}/g, (_, k: string) => vars[k] ?? `{${k}}`);
-
-    let html: string;
-    let subjectTpl: string;
-    if (isBuyer) {
-      const c = STAGE_CONTENT[stage].buyer;
-      subjectTpl = c.subject;
-      html =
-        `<p>Dear ${buyer?.contact_name || buyer?.company || "[tên]"},</p>` +
-        c.body.map((p) => `<p>${fillLocal(p)}</p>`).join("") +
-        `<p><strong>What happens next:</strong> ${fillLocal(c.action)}</p>`;
-    } else {
-      const c = STAGE_CONTENT[stage].supplier;
-      subjectTpl = c.subject;
-      html =
-        `<p>Kính gửi Anh/Chị [người liên hệ],</p>` +
-        c.body.map((p) => `<p>${fillLocal(p)}</p>`).join("") +
-        `<p><strong>Việc cần làm</strong> <em>(hạn: ${fillLocal(c.deadline)})</em>:</p><ol>` +
-        c.tasks.map((t: string) => `<li>${fillLocal(t)}</li>`).join("") +
-        `</ol>`;
-    }
-
-    setBody(html + `<p><br/></p>` + signature);
-    if (!subject.trim()) setSubject(fillLocal(subjectTpl));
-    toast.push({
-      kind: "success",
-      title: `Đã chèn mẫu "${STAGES.find((s) => s.key === stage)?.label}" cho ${direction === "buyer" ? "buyer" : "NCC"}.`,
-      lines: ["Bạn có thể sửa lại nội dung trước khi gửi."],
-    });
-  }
-
   function payload() {
     return {
       buyerId: initial.buyerId ?? null,
       supplierId: initial.supplierId ?? null,
-      direction,
+      direction: effectiveDirection,
       to,
       cc,
       bcc,
@@ -214,38 +176,11 @@ export function ComposeMail({
         </button>
         <span className="text-[13px] font-bold text-ink-900">Soạn thư mới</span>
 
-        <div className="ml-auto flex items-center gap-1.5">
-          <div className="flex overflow-hidden rounded-lg border border-ink-300 bg-white text-[12px] font-semibold">
-            {(["buyer", "supplier"] as const).map((d) => (
-              <button
-                key={d}
-                type="button"
-                onClick={() => setDirection(d)}
-                className={cx(
-                  "px-2.5 py-1 transition",
-                  direction === d ? "bg-brand-700 text-white" : "text-ink-600 hover:bg-ink-50",
-                )}
-              >
-                {d === "buyer" ? "Tới Buyer (EN)" : "Tới NCC (VI)"}
-              </button>
-            ))}
-          </div>
-          <select
-            className="input h-8 w-auto py-1 text-[12px]"
-            defaultValue=""
-            onChange={(e) => {
-              if (e.target.value) insertTemplate(e.target.value as StageKey);
-              e.target.value = "";
-            }}
-          >
-            <option value="">Chèn mẫu theo giai đoạn…</option>
-            {STAGES.filter((s) => !s.silent).map((s) => (
-              <option key={s.key} value={s.key}>
-                {s.label}
-              </option>
-            ))}
-          </select>
-        </div>
+        <span className="ml-auto inline-flex items-center gap-1.5 rounded-lg border border-ink-300 bg-white px-3 py-1.5 text-[12.5px] font-semibold text-ink-600">
+          {isBuyerDir ? <Mail className="h-3.5 w-3.5 text-brand-600" /> : <Users className="h-3.5 w-3.5 text-amber-600" />}
+          {isBuyerDir ? "Gửi buyer" : "Gửi nhà cung cấp"}
+          {locked && <span className="text-ink-400">· cố định từ hồ sơ</span>}
+        </span>
       </div>
 
       {/* Người nhận */}
@@ -314,7 +249,7 @@ export function ComposeMail({
         <RichEditor
           value={body}
           onChange={setBody}
-          placeholder="Viết nội dung email… (hoặc dùng nút “Chèn mẫu theo giai đoạn” ở trên)"
+          placeholder="Viết nội dung email…"
           minHeight={320}
         />
       </div>
