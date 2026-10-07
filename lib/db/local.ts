@@ -9,13 +9,16 @@ import type {
   EmailMessage,
   Supplier,
   SupplierInput,
+  SupplierProduct,
+  SupplierProductInput,
 } from "@/lib/types";
-import { SEED_BUYERS, SEED_SUPPLIERS } from "@/lib/db/seed";
+import { SEED_BUYERS, SEED_PRODUCTS, SEED_SUPPLIERS } from "@/lib/db/seed";
 import type { DataStore } from "@/lib/db/types";
 
 interface LocalShape {
   buyers: Buyer[];
   suppliers: Supplier[];
+  products: SupplierProduct[];
   activities: Activity[];
   messages: EmailMessage[];
 }
@@ -82,7 +85,18 @@ function seed(): LocalShape {
     return rows;
   });
 
-  return { buyers, suppliers, activities, messages: [] };
+  const products: SupplierProduct[] = SEED_PRODUCTS.map((raw, i) => {
+    const { supplier_ref, ...rest } = raw;
+    return {
+      ...rest,
+      id: `prod-seed-${i + 1}`,
+      supplier_id: suppliers[supplier_ref]?.id ?? "",
+      created_at: nowISO(40 - i),
+      updated_at: nowISO(Math.max(0, 10 - i)),
+    } satisfies SupplierProduct;
+  });
+
+  return { buyers, suppliers, products, activities, messages: [] };
 }
 
 function load(): LocalShape {
@@ -90,6 +104,7 @@ function load(): LocalShape {
     const c = g.__veximLocal;
     if (!Array.isArray(c.messages)) c.messages = [];
     if (!Array.isArray(c.activities)) c.activities = [];
+    if (!Array.isArray(c.products)) c.products = [];
     return c;
   }
   try {
@@ -103,6 +118,7 @@ function load(): LocalShape {
           delete legacy.emails;
         }
         if (!Array.isArray(parsed.activities)) parsed.activities = [];
+        if (!Array.isArray(parsed.products)) parsed.products = [];
         g.__veximLocal = parsed;
         return parsed;
       }
@@ -165,6 +181,44 @@ export const localStore: DataStore = {
     mutate((db) => {
       db.suppliers = db.suppliers.filter((s) => s.id !== id);
       for (const b of db.buyers) if (b.supplier_id === id) b.supplier_id = null;
+      db.products = db.products.filter((pr) => pr.supplier_id !== id);
+    });
+  },
+
+  async listProducts() {
+    return [...load().products].sort((a, b) => a.name.localeCompare(b.name, "vi"));
+  },
+  async getProduct(id) {
+    return load().products.find((pr) => pr.id === id) ?? null;
+  },
+  async listProductsBySupplier(supplierId) {
+    return load()
+      .products.filter((pr) => pr.supplier_id === supplierId)
+      .sort((a, b) => a.name.localeCompare(b.name, "vi"));
+  },
+  async createProduct(input) {
+    return mutate((db) => {
+      const row: SupplierProduct = {
+        ...input,
+        id: randomUUID(),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      db.products.push(row);
+      return row;
+    });
+  },
+  async updateProduct(id, patch) {
+    return mutate((db) => {
+      const row = db.products.find((pr) => pr.id === id);
+      if (!row) throw new Error("Không tìm thấy sản phẩm");
+      Object.assign(row, patch, { updated_at: new Date().toISOString() });
+      return row;
+    });
+  },
+  async deleteProduct(id) {
+    mutate((db) => {
+      db.products = db.products.filter((pr) => pr.id !== id);
     });
   },
 

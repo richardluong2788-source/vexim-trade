@@ -6,6 +6,8 @@ import type {
   EmailMessage,
   Supplier,
   SupplierInput,
+  SupplierProduct,
+  SupplierProductInput,
 } from "@/lib/types";
 
 export interface DataStore {
@@ -15,6 +17,13 @@ export interface DataStore {
   createSupplier(input: SupplierInput): Promise<Supplier>;
   updateSupplier(id: string, patch: Partial<SupplierInput>): Promise<Supplier>;
   deleteSupplier(id: string): Promise<void>;
+
+  listProducts(): Promise<SupplierProduct[]>;
+  getProduct(id: string): Promise<SupplierProduct | null>;
+  listProductsBySupplier(supplierId: string): Promise<SupplierProduct[]>;
+  createProduct(input: SupplierProductInput): Promise<SupplierProduct>;
+  updateProduct(id: string, patch: Partial<SupplierProductInput>): Promise<SupplierProduct>;
+  deleteProduct(id: string): Promise<void>;
 
   listBuyers(): Promise<Buyer[]>;
   getBuyer(id: string): Promise<Buyer | null>;

@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Loader2, Save } from "lucide-react";
 
 import { createSupplierAction, updateSupplierAction } from "@/app/actions";
+import { SUPPLIER_ROLES, SUPPLIER_STATUSES } from "@/lib/supplier";
 import type { Supplier } from "@/lib/types";
 import { Button, Field } from "@/components/ui";
 import { useToast } from "@/components/toast";
@@ -14,19 +15,25 @@ type FormState = Record<string, string | number>;
 function init(s?: Supplier | null): FormState {
   return {
     name: s?.name ?? "",
+    trade_name: s?.trade_name ?? "",
+    role: s?.role ?? "manufacturer",
+    status: s?.status ?? "new",
+    country: s?.country ?? "Việt Nam",
+    province: s?.province ?? "",
+    address: s?.address ?? "",
+    website: s?.website ?? "",
+    tax_id: s?.tax_id ?? "",
+    markets: s?.markets ?? "",
+    products: s?.products ?? "",
     contact_name: s?.contact_name ?? "",
+    contact_title: s?.contact_title ?? "",
     email: s?.email ?? "",
     phone: s?.phone ?? "",
     zalo: s?.zalo ?? "",
-    address: s?.address ?? "",
-    province: s?.province ?? "",
-    products: s?.products ?? "",
-    tax_id: s?.tax_id ?? "",
     payment_terms: s?.payment_terms ?? "",
     lead_time_days: s?.lead_time_days ?? "",
     rating: s?.rating ?? 4,
     notes: s?.notes ?? "",
-    status: s?.status ?? "active",
   };
 }
 
@@ -43,7 +50,7 @@ export function SupplierForm({ supplier }: { supplier?: Supplier | null }) {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!v("name").trim()) {
-      toast.push({ kind: "error", title: "Chưa nhập tên nhà cung cấp." });
+      toast.push({ kind: "error", title: "Chưa nhập tên pháp nhân nhà cung cấp." });
       return;
     }
     setBusy(true);
@@ -67,9 +74,12 @@ export function SupplierForm({ supplier }: { supplier?: Supplier | null }) {
   return (
     <form onSubmit={submit} className="space-y-5">
       <section className="card p-5">
-        <h2 className="mb-4 text-sm font-bold text-ink-900">Thông tin liên hệ</h2>
+        <h2 className="text-sm font-bold text-ink-900">1. Doanh nghiệp</h2>
+        <p className="mt-0.5 mb-4 text-xs text-ink-500">
+          Hồ sơ gọn để NCC dễ tham gia — giấy tờ xác minh có thể bổ sung sau, trước khi đưa vào danh sách đề xuất.
+        </p>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <Field label="Tên nhà cung cấp / xưởng" required className="sm:col-span-2">
+          <Field label="Tên pháp nhân" required className="sm:col-span-2">
             <input
               className="input"
               value={v("name")}
@@ -78,7 +88,91 @@ export function SupplierForm({ supplier }: { supplier?: Supplier | null }) {
               autoFocus
             />
           </Field>
-          <Field label="Người liên hệ">
+          <Field label="Tên thương mại">
+            <input
+              className="input"
+              value={v("trade_name")}
+              onChange={(e) => set("trade_name", e.target.value)}
+              placeholder="Nếu khác tên pháp nhân"
+            />
+          </Field>
+          <Field label="Vai trò">
+            <select className="input" value={v("role")} onChange={(e) => set("role", e.target.value)}>
+              {SUPPLIER_ROLES.map((r) => (
+                <option key={r.value} value={r.value}>
+                  {r.label}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Trạng thái hồ sơ" hint="Xác minh sâu trước khi gửi cơ hội / đề xuất">
+            <select className="input" value={v("status")} onChange={(e) => set("status", e.target.value)}>
+              {SUPPLIER_STATUSES.map((st) => (
+                <option key={st.value} value={st.value}>
+                  {st.label}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Quốc gia">
+            <input
+              className="input"
+              value={v("country")}
+              onChange={(e) => set("country", e.target.value)}
+              placeholder="VD: Việt Nam"
+            />
+          </Field>
+          <Field label="Tỉnh / Thành">
+            <input
+              className="input"
+              value={v("province")}
+              onChange={(e) => set("province", e.target.value)}
+              placeholder="VD: Cần Thơ"
+            />
+          </Field>
+          <Field label="Địa chỉ nhà máy / văn phòng">
+            <input
+              className="input"
+              value={v("address")}
+              onChange={(e) => set("address", e.target.value)}
+              placeholder="KCN / xã / huyện"
+            />
+          </Field>
+          <Field label="Website / hồ sơ giới thiệu">
+            <input
+              className="input"
+              value={v("website")}
+              onChange={(e) => set("website", e.target.value)}
+              placeholder="ten-mien.vn"
+            />
+          </Field>
+          <Field label="Mã số thuế">
+            <input
+              className="input"
+              value={v("tax_id")}
+              onChange={(e) => set("tax_id", e.target.value)}
+              placeholder="1800123456"
+            />
+          </Field>
+          <Field
+            label="Thị trường phục vụ / muốn bán"
+            className="sm:col-span-2"
+            hint="VD: EU, Nhật Bản, Trung Đông"
+          >
+            <input
+              className="input"
+              value={v("markets")}
+              onChange={(e) => set("markets", e.target.value)}
+              placeholder="EU, Nhật Bản, Trung Đông..."
+            />
+          </Field>
+        </div>
+      </section>
+
+      <section className="card p-5">
+        <h2 className="mb-4 text-sm font-bold text-ink-900">2. Người liên hệ</h2>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <Field label="Người phụ trách">
             <input
               className="input"
               value={v("contact_name")}
@@ -86,7 +180,15 @@ export function SupplierForm({ supplier }: { supplier?: Supplier | null }) {
               placeholder="VD: Trần Văn Hùng"
             />
           </Field>
-          <Field label="Email" hint="Email nhận thông báo đơn hàng (tiếng Việt)">
+          <Field label="Chức vụ">
+            <input
+              className="input"
+              value={v("contact_title")}
+              onChange={(e) => set("contact_title", e.target.value)}
+              placeholder="VD: Giám đốc kinh doanh"
+            />
+          </Field>
+          <Field label="Email công việc" hint="Email nhận thông báo đơn hàng (tiếng Việt)">
             <input
               type="email"
               className="input"
@@ -95,7 +197,7 @@ export function SupplierForm({ supplier }: { supplier?: Supplier | null }) {
               placeholder="sales@xuong.vn"
             />
           </Field>
-          <Field label="Điện thoại">
+          <Field label="Điện thoại / WhatsApp">
             <input
               className="input"
               value={v("phone")}
@@ -111,37 +213,16 @@ export function SupplierForm({ supplier }: { supplier?: Supplier | null }) {
               placeholder="09xxxxxxxx"
             />
           </Field>
-          <Field label="Địa chỉ">
-            <input
-              className="input"
-              value={v("address")}
-              onChange={(e) => set("address", e.target.value)}
-              placeholder="KCN / xã / huyện"
-            />
-          </Field>
-          <Field label="Tỉnh / Thành">
-            <input
-              className="input"
-              value={v("province")}
-              onChange={(e) => set("province", e.target.value)}
-              placeholder="VD: Cần Thơ"
-            />
-          </Field>
-          <Field label="Mã số thuế">
-            <input
-              className="input"
-              value={v("tax_id")}
-              onChange={(e) => set("tax_id", e.target.value)}
-              placeholder="1800123456"
-            />
-          </Field>
         </div>
       </section>
 
       <section className="card p-5">
-        <h2 className="mb-4 text-sm font-bold text-ink-900">Năng lực &amp; điều kiện</h2>
+        <h2 className="text-sm font-bold text-ink-900">3. Năng lực &amp; điều kiện</h2>
+        <p className="mt-0.5 mb-4 text-xs text-ink-500">
+          Hồ sơ sản phẩm chi tiết (MOQ, chứng nhận, giá tham khảo...) tạo ở trang chi tiết NCC sau khi lưu.
+        </p>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <Field label="Mặt hàng cung cấp" className="sm:col-span-2 lg:col-span-3">
+          <Field label="Ngành hàng chính (tóm tắt)" className="sm:col-span-2 lg:col-span-3">
             <input
               className="input"
               value={v("products")}
@@ -183,19 +264,13 @@ export function SupplierForm({ supplier }: { supplier?: Supplier | null }) {
               ))}
             </div>
           </Field>
-          <Field label="Trạng thái">
-            <select className="input" value={v("status")} onChange={(e) => set("status", e.target.value)}>
-              <option value="active">Đang hợp tác</option>
-              <option value="paused">Tạm ngưng</option>
-            </select>
-          </Field>
-          <Field label="Ghi chú" className="sm:col-span-2">
+          <Field label="Ghi chú nội bộ" className="sm:col-span-2 lg:col-span-3">
             <textarea
               rows={3}
               className="input resize-y"
               value={v("notes")}
               onChange={(e) => set("notes", e.target.value)}
-              placeholder="Chứng chỉ, điểm mạnh/yếu, lưu ý khi làm việc..."
+              placeholder="Chứng chỉ, điểm mạnh/yếu, lịch sử liên hệ, lưu ý khi làm việc..."
             />
           </Field>
         </div>

@@ -10,25 +10,63 @@ create extension if not exists "pgcrypto";
 -- ---------------------------------------------------------------------------
 create table if not exists public.suppliers (
   id              uuid primary key default gen_random_uuid(),
-  name            text not null,
+  name            text not null,               -- tên pháp nhân
+  trade_name      text,                        -- tên thương mại
   contact_name    text,
+  contact_title   text,                        -- chức vụ người liên hệ
   email           text,
   phone           text,
   zalo            text,
+  website         text,
+  country         text,
   address         text,
   province        text,
-  products        text,
+  role            text not null default 'manufacturer' check (role in
+                    ('manufacturer','trader','agent','exporter')),
+  markets         text,                        -- thị trường phục vụ / muốn bán
+  products        text,                        -- tóm tắt ngành hàng chính
   tax_id          text,
   payment_terms   text,
   lead_time_days  integer,
   rating          integer check (rating between 1 and 5),
   notes           text,
-  status          text not null default 'active' check (status in ('active','paused')),
+  status          text not null default 'new' check (status in
+                    ('new','verifying','verified','paused')),
   created_at      timestamptz not null default now(),
   updated_at      timestamptz not null default now()
 );
 
 create index if not exists suppliers_name_idx on public.suppliers (name);
+
+-- Hồ sơ sản phẩm riêng của từng NCC (để so khớp với RFQ của buyer)
+create table if not exists public.supplier_products (
+  id                uuid primary key default gen_random_uuid(),
+  supplier_id       uuid not null references public.suppliers(id) on delete cascade,
+  name              text not null,
+  category          text,
+  description       text,
+  spec              text,
+  unit              text,
+  moq               text,
+  monthly_capacity  text,
+  lead_time_days    integer,
+  packaging         text,
+  oem               boolean not null default false,
+  certifications    text,
+  export_port       text,
+  ref_price         numeric(14,2),
+  currency          text,
+  price_valid_until date,
+  incoterm          text,
+  incoterm_place    text,
+  payment_terms     text,
+  samples           boolean not null default false,
+  created_at        timestamptz not null default now(),
+  updated_at        timestamptz not null default now()
+);
+
+create index if not exists supplier_products_supplier_idx on public.supplier_products (supplier_id);
+create index if not exists supplier_products_category_idx on public.supplier_products (category);
 
 -- ---------------------------------------------------------------------------
 -- 2. BUYER  (mỗi buyer = một đơn trong pipeline)

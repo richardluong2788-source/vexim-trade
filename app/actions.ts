@@ -11,7 +11,7 @@ import {
   transport,
 } from "@/lib/email/send";
 import { getStage, isStage } from "@/lib/pipeline";
-import type { Buyer, BuyerInput, SupplierInput } from "@/lib/types";
+import type { Buyer, BuyerInput, SupplierInput, SupplierProductInput } from "@/lib/types";
 
 export interface ActionResult {
   ok: boolean;
@@ -318,21 +318,29 @@ function parseSupplierInput(
   raw: Partial<SupplierInput> & Record<string, unknown>,
 ): SupplierInput {
   const rating = num(raw.rating);
+  const roles = ["manufacturer", "trader", "agent", "exporter"];
+  const statuses = ["new", "verifying", "verified", "paused"];
   return {
     name: str(raw.name) ?? "",
+    trade_name: str(raw.trade_name),
     contact_name: str(raw.contact_name),
+    contact_title: str(raw.contact_title),
     email: str(raw.email),
     phone: str(raw.phone),
     zalo: str(raw.zalo),
+    website: str(raw.website),
+    country: str(raw.country),
     address: str(raw.address),
     province: str(raw.province),
+    role: (roles.includes(String(raw.role)) ? String(raw.role) : "manufacturer") as SupplierInput["role"],
+    markets: str(raw.markets),
     products: str(raw.products),
     tax_id: str(raw.tax_id),
     payment_terms: str(raw.payment_terms),
     lead_time_days: num(raw.lead_time_days),
     rating: rating === null ? null : Math.max(1, Math.min(5, Math.round(rating))),
     notes: str(raw.notes),
-    status: raw.status === "paused" ? "paused" : "active",
+    status: (statuses.includes(String(raw.status)) ? String(raw.status) : "new") as SupplierInput["status"],
   };
 }
 
@@ -380,6 +388,75 @@ export async function deleteSupplierAction(id: string): Promise<ActionResult> {
     await getStore().deleteSupplier(id);
     revalidateAll();
     return { ok: true, message: "Đã xoá nhà cung cấp." };
+  } catch (err) {
+    return { ok: false, message: err instanceof Error ? err.message : "Lỗi không xác định" };
+  }
+}
+
+/* ------------------------- SẢN PHẨM NCC ----------------------------- */
+
+function parseProductInput(
+  raw: Partial<SupplierProductInput> & Record<string, unknown>,
+): SupplierProductInput {
+  return {
+    supplier_id: str(raw.supplier_id) ?? "",
+    name: str(raw.name) ?? "",
+    category: str(raw.category),
+    description: str(raw.description),
+    spec: str(raw.spec),
+    unit: str(raw.unit),
+    moq: str(raw.moq),
+    monthly_capacity: str(raw.monthly_capacity),
+    lead_time_days: num(raw.lead_time_days),
+    packaging: str(raw.packaging),
+    oem: bool(raw.oem, false),
+    certifications: str(raw.certifications),
+    export_port: str(raw.export_port),
+    ref_price: num(raw.ref_price),
+    currency: str(raw.currency) ?? (num(raw.ref_price) !== null ? "USD" : null),
+    price_valid_until: str(raw.price_valid_until),
+    incoterm: str(raw.incoterm),
+    incoterm_place: str(raw.incoterm_place),
+    payment_terms: str(raw.payment_terms),
+    samples: bool(raw.samples, false),
+  };
+}
+
+export async function createProductAction(
+  raw: Partial<SupplierProductInput> & Record<string, unknown>,
+): Promise<ActionResult & { id?: string }> {
+  const input = parseProductInput(raw);
+  if (!input.supplier_id) return { ok: false, message: "Thiếu nhà cung cấp." };
+  if (!input.name.trim()) return { ok: false, message: "Vui lòng nhập tên sản phẩm." };
+  try {
+    const created = await getStore().createProduct(input);
+    revalidateAll();
+    return { ok: true, message: `Đã thêm sản phẩm “${created.name}”.`, id: created.id };
+  } catch (err) {
+    return { ok: false, message: err instanceof Error ? err.message : "Lỗi không xác định" };
+  }
+}
+
+export async function updateProductAction(
+  id: string,
+  raw: Partial<SupplierProductInput> & Record<string, unknown>,
+): Promise<ActionResult> {
+  const input = parseProductInput(raw);
+  if (!input.name.trim()) return { ok: false, message: "Vui lòng nhập tên sản phẩm." };
+  try {
+    await getStore().updateProduct(id, input);
+    revalidateAll();
+    return { ok: true, message: "Đã lưu hồ sơ sản phẩm." };
+  } catch (err) {
+    return { ok: false, message: err instanceof Error ? err.message : "Lỗi không xác định" };
+  }
+}
+
+export async function deleteProductAction(id: string): Promise<ActionResult> {
+  try {
+    await getStore().deleteProduct(id);
+    revalidateAll();
+    return { ok: true, message: "Đã xoá sản phẩm." };
   } catch (err) {
     return { ok: false, message: err instanceof Error ? err.message : "Lỗi không xác định" };
   }

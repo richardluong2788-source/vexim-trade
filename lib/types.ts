@@ -1,24 +1,74 @@
 export type Priority = "low" | "normal" | "high";
 
+export type SupplierRole = "manufacturer" | "trader" | "agent" | "exporter";
+export type SupplierStatus = "new" | "verifying" | "verified" | "paused";
+
 export interface Supplier {
   id: string;
+  /** Tên pháp nhân */
   name: string;
+  /** Tên thương mại (nếu khác pháp nhân) */
+  trade_name: string | null;
   contact_name: string | null;
+  /** Chức vụ người liên hệ */
+  contact_title: string | null;
   email: string | null;
   phone: string | null;
   zalo: string | null;
+  website: string | null;
+  country: string | null;
   address: string | null;
   province: string | null;
+  /** Vai trò: nhà sản xuất / thương nhân / đại lý / XK trung gian */
+  role: SupplierRole;
+  /** Thị trường đang phục vụ hoặc muốn bán */
+  markets: string | null;
+  /** Tóm tắt ngành hàng chính – hồ sơ chi tiết nằm ở từng sản phẩm */
   products: string | null;
   tax_id: string | null;
   payment_terms: string | null;
   lead_time_days: number | null;
   rating: number | null;
   notes: string | null;
-  status: "active" | "paused";
+  status: SupplierStatus;
   created_at: string;
   updated_at: string;
 }
+
+/** Hồ sơ sản phẩm riêng của NCC – dùng để so khớp với nhu cầu mua của buyer */
+export interface SupplierProduct {
+  id: string;
+  supplier_id: string;
+  name: string;
+  /** Nhóm ngành: Nông sản, Thủy sản, Gỗ... */
+  category: string | null;
+  description: string | null;
+  spec: string | null;
+  unit: string | null;
+  moq: string | null;
+  monthly_capacity: string | null;
+  lead_time_days: number | null;
+  /** Bao bì / đóng gói */
+  packaging: string | null;
+  /** Nhận làm nhãn riêng */
+  oem: boolean;
+  certifications: string | null;
+  export_port: string | null;
+  /** Giá tham khảo – KHÔNG tự gửi cho buyer như báo giá chính thức */
+  ref_price: number | null;
+  currency: string | null;
+  price_valid_until: string | null;
+  incoterm: string | null;
+  /** Địa điểm Incoterm, VD: Cát Lái */
+  incoterm_place: string | null;
+  payment_terms: string | null;
+  /** Có thể gửi mẫu */
+  samples: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export type SupplierProductInput = Omit<SupplierProduct, "id" | "created_at" | "updated_at">;
 
 export interface Buyer {
   id: string;

@@ -7,6 +7,8 @@ import type {
   EmailMessage,
   Supplier,
   SupplierInput,
+  SupplierProduct,
+  SupplierProductInput,
 } from "@/lib/types";
 import type { DataStore } from "@/lib/db/types";
 
@@ -80,6 +82,56 @@ export const supabaseStore: DataStore = {
   async deleteSupplier(id) {
     const { error } = await must().from("suppliers").delete().eq("id", id);
     if (error) fail("deleteSupplier", error);
+  },
+
+  async listProducts() {
+    const { data, error } = await must()
+      .from("supplier_products")
+      .select("*")
+      .order("name", { ascending: true });
+    if (error) fail("listProducts", error);
+    return (data ?? []) as SupplierProduct[];
+  },
+  async getProduct(id) {
+    const { data, error } = await must()
+      .from("supplier_products")
+      .select("*")
+      .eq("id", id)
+      .maybeSingle();
+    if (error) fail("getProduct", error);
+    return (data as SupplierProduct) ?? null;
+  },
+  async listProductsBySupplier(supplierId) {
+    const { data, error } = await must()
+      .from("supplier_products")
+      .select("*")
+      .eq("supplier_id", supplierId)
+      .order("name", { ascending: true });
+    if (error) fail("listProductsBySupplier", error);
+    return (data ?? []) as SupplierProduct[];
+  },
+  async createProduct(input: SupplierProductInput) {
+    const { data, error } = await must()
+      .from("supplier_products")
+      .insert(input)
+      .select()
+      .single();
+    if (error) fail("createProduct", error);
+    return data as SupplierProduct;
+  },
+  async updateProduct(id, patch) {
+    const { data, error } = await must()
+      .from("supplier_products")
+      .update({ ...patch, updated_at: new Date().toISOString() })
+      .eq("id", id)
+      .select()
+      .single();
+    if (error) fail("updateProduct", error);
+    return data as SupplierProduct;
+  },
+  async deleteProduct(id) {
+    const { error } = await must().from("supplier_products").delete().eq("id", id);
+    if (error) fail("deleteProduct", error);
   },
 
   async listBuyers() {

@@ -1,7 +1,24 @@
 import "server-only";
 
 import { getStore } from "@/lib/db";
-import type { BuyerWithSupplier, Supplier } from "@/lib/types";
+import type { BuyerWithSupplier, Supplier, SupplierProduct } from "@/lib/types";
+
+export interface ProductWithSupplier extends SupplierProduct {
+  supplier: Supplier | null;
+}
+
+export async function listProductsWithSupplier(): Promise<ProductWithSupplier[]> {
+  const store = getStore();
+  const [products, suppliers] = await Promise.all([
+    store.listProducts(),
+    store.listSuppliers(),
+  ]);
+  const map = new Map<string, Supplier>(suppliers.map((s) => [s.id, s]));
+  return products.map((p) => ({
+    ...p,
+    supplier: p.supplier_id ? (map.get(p.supplier_id) ?? null) : null,
+  }));
+}
 
 export async function listBuyersWithSupplier(): Promise<BuyerWithSupplier[]> {
   const store = getStore();

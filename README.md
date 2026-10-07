@@ -105,6 +105,29 @@ Cùng một lần đổi giai đoạn, hệ thống sinh **hai email hoàn toàn
 
 ---
 
+## Nhà cung cấp & hồ sơ sản phẩm
+
+Profile NCC trả lời: doanh nghiệp này là ai, liên hệ với ai, phục vụ thị trường nào và
+đã được xác minh đến đâu. Trường bắt buộc gọn để NCC dễ tham gia; giấy tờ xác minh bổ
+sung sau, trước khi đưa vào danh sách đề xuất.
+
+- **Vai trò**: nhà sản xuất / thương nhân / đại lý / XK trung gian.
+- **Trạng thái hồ sơ**: Mới → Đang xác minh → Đã xác minh → Tạm ngưng.
+- **Sản phẩm là hồ sơ riêng** liên kết NCC (`supplier_products`): nhóm ngành, quy cách,
+  MOQ, công suất/tháng, lead time, bao bì + OEM, chứng nhận, cảng xuất, giá tham khảo
+  **có thời hạn** (không tự gửi cho buyer như báo giá chính thức), Incoterm + địa điểm,
+  điều khoản thanh toán, khả năng gửi mẫu.
+
+### So khớp RFQ (MVP: bộ lọc + duyệt thủ công)
+
+Trang buyer có nút **“Tìm NCC phù hợp”** mở `/products?buyer=<id>`: hệ thống sắp các sản
+phẩm trùng nhóm hàng (tên/nhóm/quy cách) lên trước và gắn badge “khớp nhu cầu”.
+Người vận hành duyệt rồi mới gửi yêu cầu báo giá cho NCC — đúng luồng:
+**NCC → Sản phẩm/SKU → Báo giá theo từng RFQ → Đơn hàng**.
+
+Lưu ý bảo mật: RFQ gửi NCC mặc định ẩn danh buyer (tôn trọng `hide_buyer_from_supplier`);
+chỉ chia sẻ tên/email buyer khi được phép.
+
 ## Hộp thư (trình soạn thảo chuẩn Gmail/Zoho)
 
 Menu **Hộp thư** / **Soạn email** — đội ngũ có thể tự viết email cho buyer hoặc NCC:

@@ -10,6 +10,7 @@ import {
   Mail,
   Pencil,
   Phone,
+  Search,
   Tag,
 } from "lucide-react";
 
@@ -114,8 +115,12 @@ export default async function BuyerDetailPage({
         <div className="space-y-5 xl:col-span-2">
           {/* Thông tin đơn hàng */}
           <Card>
-            <div className="border-b border-ink-200 px-4 py-3">
+            <div className="flex items-center justify-between border-b border-ink-200 px-4 py-3">
               <h2 className="text-[15px] font-bold text-ink-900">Đơn hàng</h2>
+              <Link href={`/products?buyer=${buyer.id}`} className="btn btn-ghost">
+                <Search className="h-3.5 w-3.5" />
+                Tìm NCC phù hợp
+              </Link>
             </div>
             <dl className="grid grid-cols-2 gap-px bg-ink-100 sm:grid-cols-3">
               <Info label="Mặt hàng" value={buyer.product} />

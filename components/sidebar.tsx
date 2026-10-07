@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
+  Boxes,
   Database,
   FileText,
   Globe2,
@@ -24,6 +25,7 @@ const NAV = [
   { href: "/pipeline", label: "Pipeline", icon: KanbanSquare },
   { href: "/buyers", label: "Buyer", icon: Globe2 },
   { href: "/suppliers", label: "Nhà cung cấp", icon: Package },
+  { href: "/products", label: "Sản phẩm NCC", icon: Boxes },
   { href: "/mail", label: "Hộp thư", icon: Mail },
   { href: "/mail/compose", label: "Soạn email", icon: Pencil },
   { href: "/templates", label: "Nội dung email", icon: FileText },
