@@ -42,6 +42,8 @@ create table if not exists public.buyers (
   phone                     text,
   country                   text,
   website                   text,
+  linkedin                  text,
+  instagram                 text,
   product                   text,
   spec                      text,
   quantity                  text,

@@ -5,6 +5,8 @@ import {
   Check,
   Factory,
   Globe2,
+  AtSign,
+  Link2,
   Mail,
   Pencil,
   Phone,
@@ -133,6 +135,8 @@ export default async function BuyerDetailPage({
               <Info label="Quốc gia" value={buyer.country} icon={<Globe2 className="h-3 w-3" />} />
               <Info label="Người phụ trách" value={buyer.owner} />
               <Info label="Nguồn" value={buyer.source} />
+              <Info label="LinkedIn" value={buyer.linkedin} icon={<Link2 className="h-3 w-3" />} />
+              <Info label="Instagram" value={buyer.instagram} icon={<AtSign className="h-3 w-3" />} />
               <Info label="Cập nhật" value={relativeTime(buyer.updated_at)} />
             </div>
             {buyer.notes && (

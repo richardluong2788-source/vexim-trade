@@ -29,6 +29,8 @@ export interface Buyer {
   phone: string | null;
   country: string | null;
   website: string | null;
+  linkedin: string | null;
+  instagram: string | null;
   product: string | null;
   spec: string | null;
   quantity: string | null;

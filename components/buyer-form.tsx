@@ -30,6 +30,8 @@ function init(b?: Buyer | null): FormState {
     phone: b?.phone ?? "",
     country: b?.country ?? "",
     website: b?.website ?? "",
+    linkedin: b?.linkedin ?? "",
+    instagram: b?.instagram ?? "",
     product: b?.product ?? "",
     spec: b?.spec ?? "",
     quantity: b?.quantity ?? "",
@@ -169,6 +171,22 @@ export function BuyerForm({
               value={v("website")}
               onChange={(e) => set("website", e.target.value)}
               placeholder="company.com"
+            />
+          </Field>
+          <Field label="LinkedIn">
+            <input
+              className="input"
+              value={v("linkedin")}
+              onChange={(e) => set("linkedin", e.target.value)}
+              placeholder="linkedin.com/company/..."
+            />
+          </Field>
+          <Field label="Instagram">
+            <input
+              className="input"
+              value={v("instagram")}
+              onChange={(e) => set("instagram", e.target.value)}
+              placeholder="@company"
             />
           </Field>
           <Field label="Nguồn khách">

@@ -57,6 +57,8 @@ function parseBuyerInput(raw: Partial<BuyerInput> & Record<string, unknown>): Bu
     phone: str(raw.phone),
     country: str(raw.country),
     website: str(raw.website),
+    linkedin: str(raw.linkedin),
+    instagram: str(raw.instagram),
     product: str(raw.product),
     spec: str(raw.spec),
     quantity: str(raw.quantity),
