@@ -76,13 +76,52 @@ toàn bộ pipeline (nhớ sửa ràng buộc `check` của cột `buyers.stage`
    - Email gửi NCC **mặc định ẩn danh buyer** (chỉ nêu “Khách hàng thị trường {quốc gia}”).
      Có công tắc *“Ẩn danh buyer trong email gửi NCC”* ở từng buyer nếu khách cho phép công khai.
 
+### Nội dung khác nhau cho từng người nhận
+
+Cùng một lần đổi giai đoạn, hệ thống sinh **hai email hoàn toàn khác nhau**:
+
+| | Gửi buyer | Gửi nhà cung cấp |
+| --- | --- | --- |
+| Ngôn ngữ | Tiếng Anh | Tiếng Việt |
+| Tiêu đề | Riêng cho từng giai đoạn | Riêng cho từng giai đoạn |
+| Nội dung | Tiến độ đơn hàng, bước kế tiếp | Việc xưởng phải làm |
+| Khối đặc biệt | “WHAT HAPPENS NEXT” | “VIỆC CẦN LÀM” + thời hạn phản hồi |
+| Thông tin đơn | Không có thông tin NCC | Ẩn danh buyer (mặc định) |
+
 ### Hai cách đổi trạng thái
 
 - **Dropdown** ngay trên bảng Buyer hoặc trên thẻ ở trang Pipeline (kéo-thả cũng được).
-- Mặc định hệ thống hiện hộp xác nhận **người nhận** trước khi gửi (tránh gửi nhầm cho khách thật).
-  Bật công tắc **“Gửi ngay, không hỏi lại”** (góc phải màn hình) nếu muốn chọn là gửi luôn.
+- **Mặc định là gửi ngay**: chọn giai đoạn là hệ thống tự gửi email cho buyer và NCC.
+- Tắt công tắc **“Tự động gửi khi đổi giai đoạn”** (góc phải màn hình) nếu muốn hệ thống hiện
+  hộp xác nhận người nhận + cho phép thêm ghi chú riêng trước khi gửi.
 
 ---
+
+## Hộp thư (trình soạn thảo chuẩn Gmail/Zoho)
+
+Menu **Hộp thư** / **Soạn email** — đội ngũ có thể tự viết email cho buyer hoặc NCC:
+
+- Ô **Tới / Cc / Bcc** dạng thẻ (gõ Enter hoặc dấu phẩy để thêm, xoá bằng phím Backspace),
+  có gợi ý địa chỉ từ danh sách buyer & NCC.
+- **Tiêu đề** + **trình soạn thảo có định dạng**: đậm, nghiêng, gạch chân, cỡ chữ, màu chữ,
+  danh sách, canh lề, chèn liên kết, hoàn tác.
+- **Đính kèm tệp** (tối đa 10MB), **lưu bản nháp**, **gửi lại**, **xoá**.
+- Nút **“Chèn mẫu theo giai đoạn”**: nạp nội dung đúng của giai đoạn hiện tại vào khung soạn
+  để sửa tiếp, thay vì phải viết lại từ đầu.
+- Mở soạn trực tiếp từ trang chi tiết buyer (**Soạn email**) hoặc từ khối nhà cung cấp
+  (**Soạn email cho NCC**) — người nhận, tiêu đề và nội dung đã nạp sẵn theo giai đoạn.
+
+Toàn bộ email (tự động + tự soạn) nằm chung một **Hộp thư đi**, lọc được theo người nhận
+(buyer/NCC) và theo loại (tự động / tự soạn).
+
+## Nội dung email theo giai đoạn
+
+Trang **Nội dung email** liệt kê đầy đủ 8 giai đoạn × 2 người nhận, kèm bản xem trước email
+thật với dữ liệu của một đơn cụ thể. Nội dung nằm trong `lib/email/stage-content.ts`, hỗ trợ
+placeholder `{product}` `{quantity}` `{spec}` `{country}` `{port}` `{incoterm}` `{shipdate}`.
+
+Mỗi email gửi NCC luôn có khối **“VIỆC CẦN LÀM”** dạng checklist kèm **thời hạn phản hồi**
+riêng cho từng giai đoạn (ví dụ giai đoạn *Đang sản xuất* → “Cập nhật trước 16h thứ Sáu hằng tuần”).
 
 ## Cấu trúc thư mục
 
@@ -92,14 +131,23 @@ app/
   pipeline/page.tsx           Board kéo-thả theo trạng thái
   buyers/                     Danh sách, thêm mới, chi tiết, sửa
   suppliers/                  Danh sách, thêm mới, chi tiết, sửa
-  emails/page.tsx             Nhật ký email + xem lại nội dung + gửi lại
+  mail/page.tsx               Hộp thư đi + bản nháp
+  mail/compose/page.tsx       Trình soạn thảo email
+  mail/[id]/page.tsx          Xem một email + gửi lại / trả lời / xoá
+  templates/page.tsx          Nội dung email theo từng giai đoạn (buyer & NCC)
   settings/page.tsx           Trạng thái kết nối Supabase/Resend, bảng pipeline
   actions.ts                  Toàn bộ server actions (CRUD, đổi trạng thái, gửi email)
-components/                   UI: stage-select, bảng, board, form, xem trước email...
+components/
+  stage-select.tsx            Dropdown trạng thái + hộp xác nhận người nhận
+  pipeline-board.tsx          Board kéo-thả
+  compose-mail.tsx            Trình soạn thảo kiểu Gmail/Zoho
+  rich-editor.tsx             Khung soạn thảo có định dạng
+  mailbox.tsx                 Danh sách hộp thư
 lib/
-  pipeline.ts                 Định nghĩa trạng thái + nội dung email theo trạng thái
+  pipeline.ts                 Danh sách giai đoạn của pipeline
+  email/stage-content.ts      NỘI DUNG email riêng cho buyer và cho NCC theo từng giai đoạn
   email/templates.ts          Sinh HTML email buyer (EN) và NCC (VI)
-  email/send.ts               Gửi qua Resend + ghi log
+  email/send.ts               Gửi qua Resend (kèm Cc/Bcc/đính kèm) + lưu hộp thư
   db/                         Tầng dữ liệu: tự chọn Supabase hoặc kho local
 supabase/schema.sql           Script tạo bảng
 ```

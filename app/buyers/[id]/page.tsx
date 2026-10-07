@@ -42,9 +42,9 @@ export default async function BuyerDetailPage({
   const [suppliers, activities, emails] = await Promise.all([
     store.listSuppliers(),
     store.listActivities(id),
-    store.listEmails(300),
+    store.listMessages(400),
   ]);
-  const buyerEmails = emails.filter((e) => e.buyer_id === id).slice(0, 15);
+  const buyerEmails = emails.filter((e) => e.buyer_id === id && e.status !== "draft").slice(0, 15);
 
   const supplier = buyer.supplier_id
     ? (suppliers.find((s) => s.id === buyer.supplier_id) ?? null)
@@ -87,6 +87,10 @@ export default async function BuyerDetailPage({
               }}
               className="min-w-[190px]"
             />
+            <Link href={`/mail/compose?to=${buyer.id}&dir=buyer`} className="btn btn-primary">
+              <Mail className="h-4 w-4" />
+              Soạn email
+            </Link>
             <Link href={`/buyers/${buyer.id}/edit`} className="btn btn-ghost">
               <Pencil className="h-4 w-4" />
               Sửa
@@ -158,6 +162,15 @@ export default async function BuyerDetailPage({
             <div className="flex items-center gap-2 border-b border-ink-200 px-4 py-3">
               <Factory className="h-4 w-4 text-brand-700" />
               <h2 className="text-[15px] font-bold text-ink-900">Nhà cung cấp</h2>
+              {supplier && (
+                <Link
+                  href={`/mail/compose?to=${buyer.id}&supplier=${supplier.id}&dir=supplier`}
+                  className="btn btn-ghost ml-auto px-2.5 py-1 text-[12px]"
+                >
+                  <Mail className="h-3.5 w-3.5" />
+                  Soạn email cho NCC
+                </Link>
+              )}
             </div>
             <div className="p-4">
               <SupplierPicker
@@ -295,7 +308,7 @@ export default async function BuyerDetailPage({
           <Card>
             <div className="flex items-center justify-between border-b border-ink-200 px-4 py-3">
               <h2 className="text-[15px] font-bold text-ink-900">Email đã gửi</h2>
-              <Link href="/emails" className="text-[12px] font-semibold text-brand-700 hover:underline">
+              <Link href="/mail" className="text-[12px] font-semibold text-brand-700 hover:underline">
                 Xem tất cả
               </Link>
             </div>

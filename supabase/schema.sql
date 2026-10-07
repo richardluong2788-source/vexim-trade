@@ -90,25 +90,37 @@ create table if not exists public.buyer_activities (
 create index if not exists activities_buyer_idx on public.buyer_activities (buyer_id, created_at desc);
 
 -- ---------------------------------------------------------------------------
--- 4. NHẬT KÝ EMAIL
+-- 4. HỘP THƯ – mọi email gửi đi (tự động theo giai đoạn + đội ngũ tự soạn)
 -- ---------------------------------------------------------------------------
-create table if not exists public.email_logs (
-  id          uuid primary key default gen_random_uuid(),
-  buyer_id    uuid not null references public.buyers(id) on delete cascade,
-  supplier_id uuid references public.suppliers(id) on delete set null,
-  stage       text not null,
-  direction   text not null check (direction in ('buyer','supplier','both')),
-  subject     text not null,
-  recipients  text[] not null default '{}',
-  body_html   text not null,
-  status      text not null check (status in ('sent','failed','simulated')),
-  provider    text not null default 'resend',
-  error       text,
-  created_at  timestamptz not null default now()
+create table if not exists public.email_messages (
+  id           uuid primary key default gen_random_uuid(),
+  buyer_id     uuid references public.buyers(id) on delete cascade,
+  supplier_id  uuid references public.suppliers(id) on delete set null,
+  -- 'auto'  = hệ thống tự gửi khi đổi giai đoạn trong pipeline
+  -- 'manual'= đội ngũ soạn bằng trình soạn thảo
+  kind         text not null default 'auto' check (kind in ('auto','manual')),
+  stage        text,
+  direction    text not null check (direction in ('buyer','supplier')),
+  thread_id    text not null default '',
+  subject      text not null,
+  to_emails    text[] not null default '{}',
+  cc_emails    text[] not null default '{}',
+  bcc_emails   text[] not null default '{}',
+  body_html    text not null,
+  body_text    text not null default '',
+  -- [{ name, size, type, content(base64) }]
+  attachments  jsonb not null default '[]',
+  status       text not null check (status in ('draft','sent','failed','simulated')),
+  provider     text not null default 'resend',
+  error        text,
+  created_by   text,
+  created_at   timestamptz not null default now(),
+  sent_at      timestamptz
 );
 
-create index if not exists email_logs_buyer_idx  on public.email_logs (buyer_id, created_at desc);
-create index if not exists email_logs_stage_idx  on public.email_logs (created_at desc);
+create index if not exists email_messages_buyer_idx on public.email_messages (buyer_id, created_at desc);
+create index if not exists email_messages_kind_idx  on public.email_messages (kind, created_at desc);
+create index if not exists email_messages_created_idx on public.email_messages (created_at desc);
 
 -- ---------------------------------------------------------------------------
 -- 5. TỰ ĐỘNG CẬP NHẬT updated_at
@@ -135,8 +147,8 @@ create trigger suppliers_touch before update on public.suppliers
 -- alter table public.suppliers        enable row level security;
 -- alter table public.buyers           enable row level security;
 -- alter table public.buyer_activities enable row level security;
--- alter table public.email_logs       enable row level security;
+-- alter table public.email_messages   enable row level security;
 --
 -- create policy "service role full access" on public.buyers
 --   for all to service_role using (true) with check (true);
--- (lặp lại cho suppliers, buyer_activities, email_logs)
+-- (lặp lại cho suppliers, buyer_activities, email_messages)

@@ -24,11 +24,13 @@ export function useAutoSend() {
 }
 
 export function AutoSendProvider({ children }: { children: ReactNode }) {
-  const [value, setValue] = useState(false);
+  // Mặc định: BẬT — đổi giai đoạn là hệ thống tự gửi email ngay
+  const [value, setValue] = useState(true);
 
   useEffect(() => {
     try {
-      setValue(localStorage.getItem(KEY) === "1");
+      const saved = localStorage.getItem(KEY);
+      setValue(saved === null ? true : saved === "1");
     } catch {
       /* bỏ qua */
     }
@@ -57,8 +59,8 @@ export function AutoSendToggle({ className }: { className?: string }) {
       onClick={() => set(!value)}
       title={
         value
-          ? "Đang bật: chọn trạng thái là gửi email ngay, không hỏi lại"
-          : "Đang tắt: hệ thống sẽ hỏi xác nhận người nhận trước khi gửi"
+          ? "Đang bật: đổi giai đoạn là hệ thống tự gửi email cho buyer và NCC ngay"
+          : "Đang tắt: hệ thống sẽ hỏi lại người nhận trước khi gửi"
       }
       className={cx(
         "flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-[12px] font-semibold transition",
@@ -69,7 +71,7 @@ export function AutoSendToggle({ className }: { className?: string }) {
       )}
     >
       <Zap className={cx("h-3.5 w-3.5", value ? "text-brand-600" : "text-ink-400")} />
-      Gửi ngay, không hỏi lại
+      Tự động gửi khi đổi giai đoạn
       <span
         className={cx(
           "relative h-4 w-7 shrink-0 rounded-full transition",

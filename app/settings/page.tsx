@@ -2,7 +2,10 @@ import { Check, Copy, Database, Mail, TriangleAlert, X } from "lucide-react";
 
 import { COMPANY } from "@/lib/config";
 import { dataMode } from "@/lib/db";
-import { STAGES, STAGE_EMAIL_COPY } from "@/lib/pipeline";
+import { STAGES } from "@/lib/pipeline";
+import { STAGE_CONTENT } from "@/lib/email/stage-content";
+import Link from "next/link";
+
 import { Card, cx } from "@/components/ui";
 import { PageHeader } from "@/components/page-header";
 import { CopyButton } from "@/components/copy-button";
@@ -174,9 +177,13 @@ EMAIL_FROM_NAME=Vexim Trade`}</pre>
         <div className="border-b border-ink-200 px-4 py-3">
           <h2 className="text-[15px] font-bold text-ink-900">Cấu trúc pipeline</h2>
           <p className="mt-0.5 text-xs text-ink-500">
-            Đổi giai đoạn bằng cách sửa mảng <code>STAGES</code> trong{" "}
-            <code>lib/pipeline.ts</code> (và ràng buộc <code>check</code> của cột{" "}
-            <code>buyers.stage</code> trong SQL).
+            Mỗi giai đoạn có nội dung riêng cho buyer (EN) và cho NCC (VI) — sửa trong{" "}
+            <code>lib/email/stage-content.ts</code>. Danh sách giai đoạn ở{" "}
+            <code>lib/pipeline.ts</code>. Xem đầy đủ tại{" "}
+            <Link href="/templates" className="font-semibold text-brand-700 hover:underline">
+              Nội dung email theo giai đoạn
+            </Link>
+            .
           </p>
         </div>
         <table className="w-full border-collapse">
@@ -201,10 +208,21 @@ EMAIL_FROM_NAME=Vexim Trade`}</pre>
                   </span>
                 </td>
                 <td className="table-td max-w-[380px] text-[12px] leading-relaxed text-ink-600">
-                  {STAGE_EMAIL_COPY[s.key].buyerBody || "—"}
+                  <span className="mb-1 block font-semibold text-ink-800">
+                    {STAGE_CONTENT[s.key].buyer.subject || "—"}
+                  </span>
+                  {STAGE_CONTENT[s.key].buyer.body[0] || "—"}
                 </td>
                 <td className="table-td max-w-[340px] text-[12px] leading-relaxed text-ink-600">
-                  {STAGE_EMAIL_COPY[s.key].supplierBody || "—"}
+                  <span className="mb-1 block font-semibold text-ink-800">
+                    {STAGE_CONTENT[s.key].supplier.subject || "—"}
+                  </span>
+                  {STAGE_CONTENT[s.key].supplier.body[0] || "—"}
+                  {STAGE_CONTENT[s.key].supplier.tasks.length > 0 && (
+                    <span className="mt-1 block text-[11px] text-amber-700">
+                      Hạn: {STAGE_CONTENT[s.key].supplier.deadline}
+                    </span>
+                  )}
                 </td>
                 <td className="table-td">
                   <StatusPill

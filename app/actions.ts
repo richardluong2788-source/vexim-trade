@@ -3,7 +3,12 @@
 import { revalidatePath } from "next/cache";
 
 import { getStore } from "@/lib/db";
-import { resendLoggedEmail, sendStageUpdate } from "@/lib/email/send";
+import {
+  saveDraft,
+  sendManualMail,
+  sendStageUpdate,
+  transport,
+} from "@/lib/email/send";
 import { getStage, isStage } from "@/lib/pipeline";
 import type { Buyer, BuyerInput, SupplierInput } from "@/lib/types";
 
@@ -358,26 +363,140 @@ export async function deleteSupplierAction(id: string): Promise<ActionResult> {
 
 /* ------------------------------ EMAIL ------------------------------- */
 
-export async function resendLoggedEmailAction(emailId: string): Promise<ActionResult> {
-  const store = getStore();
-  const logs = await store.listEmails(500);
-  const log = logs.find((e) => e.id === emailId);
-  if (!log) return { ok: false, message: "Không tìm thấy email trong nhật ký." };
-  const res = await resendLoggedEmail({
-    to: log.recipients,
-    subject: log.subject,
-    html: log.body_html,
+const EMAIL_LIST_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+export interface MailDraftInput {
+  buyerId?: string | null;
+  supplierId?: string | null;
+  direction: "buyer" | "supplier";
+  to: string[];
+  cc?: string[];
+  bcc?: string[];
+  subject: string;
+  bodyHtml: string;
+  attachments?: { name: string; size: number; type: string; content: string }[];
+  author?: string | null;
+}
+
+function cleanList(list?: string[]): string[] {
+  return (list ?? [])
+    .flatMap((x) => x.split(/[,;\n]/))
+    .map((x) => x.trim())
+    .filter(Boolean);
+}
+
+function validateMail(input: MailDraftInput): string | null {
+  const to = cleanList(input.to);
+  if (to.length === 0) return "Chưa có người nhận (Tới).";
+  const all = [...to, ...cleanList(input.cc), ...cleanList(input.bcc)];
+  const bad = all.filter((e) => !EMAIL_LIST_RE.test(e));
+  if (bad.length) return `Địa chỉ email không hợp lệ: ${bad.join(", ")}`;
+  if (!input.subject || !input.subject.trim()) return "Chưa có tiêu đề email.";
+  const text = input.bodyHtml.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").trim();
+  if (!text) return "Nội dung email đang trống.";
+  const totalSize = (input.attachments ?? []).reduce((s, a) => s + (a.size || 0), 0);
+  if (totalSize > 10 * 1024 * 1024) return "Tổng dung lượng file đính kèm vượt quá 10MB.";
+  return null;
+}
+
+export async function sendMailAction(input: MailDraftInput): Promise<ActionResult> {
+  const err = validateMail(input);
+  if (err) return { ok: false, message: err };
+
+  const res = await sendManualMail({
+    buyerId: input.buyerId ?? null,
+    supplierId: input.supplierId ?? null,
+    direction: input.direction,
+    to: cleanList(input.to),
+    cc: cleanList(input.cc),
+    bcc: cleanList(input.bcc),
+    subject: input.subject.trim(),
+    bodyHtml: input.bodyHtml,
+    attachments: input.attachments,
+    author: input.author ?? null,
+  });
+
+  if (res.ok && input.buyerId) {
+    await getStore()
+      .addActivity({
+        buyer_id: input.buyerId,
+        type: "email",
+        message: `Gửi email thủ công: ${input.subject.trim()}`,
+        created_by: input.author ?? null,
+      })
+      .catch(() => null);
+  }
+  revalidateAll();
+
+  if (!res.ok) return { ok: false, message: `Gửi thất bại: ${res.error}` };
+  return {
+    ok: true,
+    message:
+      res.status === "simulated"
+        ? "[DEMO] Email đã được tạo — chưa cấu hình Resend nên chưa gửi thật."
+        : `Đã gửi tới ${cleanList(input.to).join(", ")}`,
+  };
+}
+
+export async function saveDraftAction(input: MailDraftInput): Promise<ActionResult> {
+  const id = await saveDraft({
+    buyerId: input.buyerId ?? null,
+    supplierId: input.supplierId ?? null,
+    direction: input.direction,
+    to: cleanList(input.to),
+    cc: cleanList(input.cc),
+    bcc: cleanList(input.bcc),
+    subject: input.subject.trim() || "(không có tiêu đề)",
+    bodyHtml: input.bodyHtml,
+    attachments: input.attachments,
+    author: input.author ?? null,
   });
   revalidateAll();
-  return res.ok
-    ? {
-        ok: true,
-        message:
-          res.status === "simulated"
-            ? "[DEMO] Email đã được tạo lại (chưa cấu hình Resend)."
-            : "Đã gửi lại email thành công.",
-      }
-    : { ok: false, message: `Gửi lại thất bại: ${res.error}` };
+  return id
+    ? { ok: true, message: "Đã lưu bản nháp.", id }
+    : { ok: false, message: "Không lưu được bản nháp." };
+}
+
+export async function deleteMessageAction(id: string): Promise<ActionResult> {
+  try {
+    await getStore().deleteMessage(id);
+    revalidateAll();
+    return { ok: true, message: "Đã xoá email." };
+  } catch (err) {
+    return { ok: false, message: err instanceof Error ? err.message : "Lỗi không xác định" };
+  }
+}
+
+export async function resendMessageAction(id: string): Promise<ActionResult> {
+  const store = getStore();
+  const msg = await store.getMessage(id);
+  if (!msg) return { ok: false, message: "Không tìm thấy email." };
+  const res = await transport({
+    to: msg.to_emails,
+    cc: msg.cc_emails,
+    bcc: msg.bcc_emails,
+    subject: msg.subject,
+    html: msg.body_html,
+    text: msg.body_text,
+    attachments: msg.attachments,
+  });
+  await store
+    .updateMessage(id, {
+      status: res.status,
+      provider: res.provider,
+      error: res.error,
+      sent_at: res.ok ? new Date().toISOString() : msg.sent_at,
+    })
+    .catch(() => null);
+  revalidateAll();
+  if (!res.ok) return { ok: false, message: `Gửi lại thất bại: ${res.error}` };
+  return {
+    ok: true,
+    message:
+      res.status === "simulated"
+        ? "[DEMO] Đã tạo lại email (chưa cấu hình Resend)."
+        : "Đã gửi lại thành công.",
+  };
 }
 
 /** Gửi lại thông báo tiến độ ở trạng thái hiện tại (không đổi trạng thái) */
@@ -397,8 +516,6 @@ export async function sendUpdateNowAction(
   if (!isStage(stage)) return { ok: false, message: "Trạng thái không hợp lệ." };
 
   const supplier = buyer.supplier_id ? await store.getSupplier(buyer.supplier_id) : null;
-  const details: string[] = [];
-
   const wantBuyer = opts.sendBuyer !== false;
   const wantSupplier = opts.sendSupplier !== false && Boolean(supplier?.email);
 
@@ -416,7 +533,6 @@ export async function sendUpdateNowAction(
     messageToBuyer: opts.messageToBuyer,
     messageToSupplier: opts.messageToSupplier,
   });
-  details.push(...result.messages);
 
   if (result.sent) {
     await store
@@ -433,6 +549,6 @@ export async function sendUpdateNowAction(
   return {
     ok: result.sent && !result.failed,
     message: result.sent ? "Đã gửi email cập nhật tiến độ." : "Không gửi được email.",
-    details,
+    details: result.messages,
   };
 }

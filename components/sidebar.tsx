@@ -5,12 +5,14 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
   Database,
+  FileText,
   Globe2,
   KanbanSquare,
   LayoutDashboard,
   Mail,
   Menu,
   Package,
+  Pencil,
   Settings2,
   X,
 } from "lucide-react";
@@ -22,7 +24,9 @@ const NAV = [
   { href: "/pipeline", label: "Pipeline", icon: KanbanSquare },
   { href: "/buyers", label: "Buyer", icon: Globe2 },
   { href: "/suppliers", label: "Nhà cung cấp", icon: Package },
-  { href: "/emails", label: "Nhật ký email", icon: Mail },
+  { href: "/mail", label: "Hộp thư", icon: Mail },
+  { href: "/mail/compose", label: "Soạn email", icon: Pencil },
+  { href: "/templates", label: "Nội dung email", icon: FileText },
   { href: "/settings", label: "Cài đặt", icon: Settings2 },
 ];
 

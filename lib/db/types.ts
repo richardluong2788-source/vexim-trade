@@ -3,7 +3,7 @@ import type {
   ActivityType,
   Buyer,
   BuyerInput,
-  EmailLog,
+  EmailMessage,
   Supplier,
   SupplierInput,
 } from "@/lib/types";
@@ -32,6 +32,14 @@ export interface DataStore {
     created_by?: string | null;
   }): Promise<Activity>;
 
-  listEmails(limit?: number): Promise<EmailLog[]>;
-  addEmail(input: Omit<EmailLog, "id" | "created_at">): Promise<EmailLog>;
+  listMessages(limit?: number): Promise<EmailMessage[]>;
+  getMessage(id: string): Promise<EmailMessage | null>;
+  addMessage(
+    input: Omit<EmailMessage, "id" | "created_at" | "sent_at"> & { sent_at?: string | null },
+  ): Promise<EmailMessage>;
+  updateMessage(
+    id: string,
+    patch: Partial<Omit<EmailMessage, "id" | "created_at">>,
+  ): Promise<EmailMessage>;
+  deleteMessage(id: string): Promise<void>;
 }

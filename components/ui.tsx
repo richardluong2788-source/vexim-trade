@@ -163,22 +163,33 @@ export function formatMoney(n: number | null | undefined) {
   if (n === null || n === undefined || Number.isNaN(n)) return "—";
   if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(2)}M`;
   if (n >= 1_000) return `$${(n / 1_000).toFixed(1)}K`;
-  return `$${n.toLocaleString("en-US")}`;
+  return `$${n.toLocaleString("en-US", { useGrouping: true })}`;
+}
+
+/** Định dạng số có dấu phẩy phân cách nghìn, không phụ thuộc locale runtime */
+export function group(n: number): string {
+  return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
 
 export function formatDate(d: string | null | undefined) {
   if (!d) return "—";
   const date = new Date(d.length <= 10 ? `${d}T00:00:00` : d);
   if (Number.isNaN(date.getTime())) return d;
-  return date.toLocaleDateString("vi-VN", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
+  // định dạng thủ công để server và browser cho ra chuỗi giống hệt nhau (tránh lỗi hydration)
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${p(date.getDate())}/${p(date.getMonth() + 1)}/${date.getFullYear()}`;
+}
+
+export function formatDateTime(iso: string) {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso;
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${p(date.getDate())}/${p(date.getMonth() + 1)}/${date.getFullYear()} ${p(date.getHours())}:${p(date.getMinutes())}`;
 }
 
 export function relativeTime(iso: string) {
   const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return iso;
   const diff = Date.now() - then;
   const min = Math.round(diff / 60000);
   if (min < 1) return "vừa xong";

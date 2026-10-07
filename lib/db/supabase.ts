@@ -4,7 +4,7 @@ import type {
   Activity,
   Buyer,
   BuyerInput,
-  EmailLog,
+  EmailMessage,
   Supplier,
   SupplierInput,
 } from "@/lib/types";
@@ -140,22 +140,45 @@ export const supabaseStore: DataStore = {
     return data as Activity;
   },
 
-  async listEmails(limit = 100) {
+  async listMessages(limit = 200) {
     const { data, error } = await must()
-      .from("email_logs")
+      .from("email_messages")
       .select("*")
       .order("created_at", { ascending: false })
       .limit(limit);
-    if (error) fail("listEmails", error);
-    return (data ?? []) as EmailLog[];
+    if (error) fail("listMessages", error);
+    return (data ?? []) as EmailMessage[];
   },
-  async addEmail(input) {
+  async getMessage(id) {
     const { data, error } = await must()
-      .from("email_logs")
+      .from("email_messages")
+      .select("*")
+      .eq("id", id)
+      .maybeSingle();
+    if (error) fail("getMessage", error);
+    return (data as EmailMessage) ?? null;
+  },
+  async addMessage(input) {
+    const { data, error } = await must()
+      .from("email_messages")
       .insert(input)
       .select()
       .single();
-    if (error) fail("addEmail", error);
-    return data as EmailLog;
+    if (error) fail("addMessage", error);
+    return data as EmailMessage;
+  },
+  async updateMessage(id, patch) {
+    const { data, error } = await must()
+      .from("email_messages")
+      .update(patch)
+      .eq("id", id)
+      .select()
+      .single();
+    if (error) fail("updateMessage", error);
+    return data as EmailMessage;
+  },
+  async deleteMessage(id) {
+    const { error } = await must().from("email_messages").delete().eq("id", id);
+    if (error) fail("deleteMessage", error);
   },
 };

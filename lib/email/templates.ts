@@ -1,11 +1,6 @@
 import { COMPANY } from "@/lib/config";
-import {
-  FUNNEL_STAGES,
-  STAGE_EMAIL_COPY,
-  getStage,
-  stageIndex,
-  type StageKey,
-} from "@/lib/pipeline";
+import { STAGE_CONTENT } from "@/lib/email/stage-content";
+import { FUNNEL_STAGES, getStage, stageIndex, type StageKey } from "@/lib/pipeline";
 import type { Buyer, Supplier } from "@/lib/types";
 
 export interface EmailPayload {
@@ -38,13 +33,44 @@ export function money(n: number | null | undefined): string {
   return `USD ${n.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
 }
 
+function fmtDate(d: string | null | undefined, locale: string): string {
+  if (!d) return "";
+  const date = new Date(d.length <= 10 ? `${d}T00:00:00` : d);
+  if (Number.isNaN(date.getTime())) return d;
+  return date.toLocaleDateString(locale, { day: "2-digit", month: "short", year: "numeric" });
+}
+
+/** Thay placeholder {product}, {quantity}... bằng dữ liệu thật của đơn */
+export function fill(
+  tpl: string,
+  buyer: Buyer,
+  supplier?: Supplier | null,
+): string {
+  const map: Record<string, string> = {
+    product: buyer.product || "your order",
+    quantity: buyer.quantity || "as discussed",
+    spec: buyer.spec || "as agreed",
+    country: buyer.country || "overseas",
+    port: buyer.port || "your destination port",
+    incoterm: buyer.incoterm || "FOB",
+    shipdate: fmtDate(buyer.expected_ship_date, "en-GB") || "to be confirmed",
+    ref: shortCode(buyer.id),
+    company: buyer.company,
+    supplier: supplier?.name ?? "our production partner",
+  };
+  return tpl.replace(/\{(\w+)\}/g, (_, k: string) => map[k] ?? `{${k}}`);
+}
+
 const BRAND = "#0f766e";
 const INK = "#0f172a";
 const MUTED = "#64748b";
 const LINE = "#e2e8f0";
 const SOFT = "#f8fafc";
 
-function shell(opts: { title: string; body: string; footer: string }): string {
+/** Khung email dùng chung (cả email tự động lẫn email đội ngũ tự soạn) */
+export function wrapEmailShell(opts: { title: string; body: string; preheader?: string }): string {
+  const footer = `${escapeHtml(COMPANY.name)} &middot; ${escapeHtml(COMPANY.address)}<br/>
+    ${escapeHtml(COMPANY.phone)} &middot; <a href="${escapeHtml(COMPANY.website)}" style="color:${BRAND};text-decoration:none;">${escapeHtml(COMPANY.website)}</a>`;
   return `<!doctype html>
 <html lang="en">
   <head>
@@ -53,7 +79,7 @@ function shell(opts: { title: string; body: string; footer: string }): string {
     <title>${escapeHtml(opts.title)}</title>
   </head>
   <body style="margin:0;padding:0;background:#eef2f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:${INK};">
-    <div style="display:none;max-height:0;overflow:hidden;opacity:0;">${escapeHtml(opts.title)}</div>
+    <div style="display:none;max-height:0;overflow:hidden;opacity:0;">${escapeHtml(opts.preheader ?? opts.title)}</div>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#eef2f6;padding:24px 12px;">
       <tr>
         <td align="center">
@@ -62,24 +88,18 @@ function shell(opts: { title: string; body: string; footer: string }): string {
               <td style="background:${BRAND};padding:20px 28px;">
                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                   <tr>
-                    <td style="color:#ffffff;font-size:20px;font-weight:800;letter-spacing:.4px;">
-                      ${escapeHtml(COMPANY.name.toUpperCase())}
-                    </td>
+                    <td style="color:#ffffff;font-size:20px;font-weight:800;letter-spacing:.4px;">${escapeHtml(COMPANY.name.toUpperCase())}</td>
                     <td align="right" style="color:#a7f3d0;font-size:12px;">${escapeHtml(COMPANY.tagline)}</td>
                   </tr>
                 </table>
               </td>
             </tr>
-            <tr><td style="padding:28px;">${opts.body}</td></tr>
+            <tr><td style="padding:28px;" class="vxt-body"><div class="vxt-inner">${opts.body}</div></td></tr>
             <tr>
-              <td style="background:${SOFT};padding:20px 28px;border-top:1px solid ${LINE};font-size:12px;color:${MUTED};line-height:18px;">
-                ${opts.footer}
-              </td>
+              <td style="background:${SOFT};padding:20px 28px;border-top:1px solid ${LINE};font-size:12px;color:${MUTED};line-height:18px;">${footer}</td>
             </tr>
           </table>
-          <p style="color:#94a3b8;font-size:11px;margin:14px 0 0;">
-            Đây là email tự động từ hệ thống quản lý đơn hàng của ${escapeHtml(COMPANY.name)}.
-          </p>
+          <p style="color:#94a3b8;font-size:11px;margin:14px 0 0;">${escapeHtml(COMPANY.name)} &middot; ${escapeHtml(COMPANY.website)}</p>
         </td>
       </tr>
     </table>
@@ -87,7 +107,7 @@ function shell(opts: { title: string; body: string; footer: string }): string {
 </html>`;
 }
 
-function progressBar(stageKey: string, lang: "en" | "vi"): string {
+export function progressBar(stageKey: string, lang: "en" | "vi"): string {
   const current = stageIndex(stageKey);
   const isLost = stageKey === "lost";
   const cells = FUNNEL_STAGES.map((s, i) => {
@@ -97,38 +117,26 @@ function progressBar(stageKey: string, lang: "en" | "vi"): string {
     const fg = active ? "#ffffff" : done ? "#0f766e" : "#94a3b8";
     const label = lang === "vi" ? s.label : s.labelEn;
     return `<td align="center" style="width:${Math.floor(100 / FUNNEL_STAGES.length)}%;padding:0 2px;vertical-align:top;">
-      <div style="background:${bg};color:${fg};border-radius:999px;font-size:11px;font-weight:700;padding:5px 2px;white-space:nowrap;overflow:hidden;">
-        ${done ? "&#10003;" : i + 1}
-      </div>
+      <div style="background:${bg};color:${fg};border-radius:999px;font-size:11px;font-weight:700;padding:5px 2px;white-space:nowrap;overflow:hidden;">${done ? "&#10003;" : i + 1}</div>
       <div style="font-size:9px;color:${active ? INK : "#94a3b8"};margin-top:5px;line-height:12px;font-weight:${active ? 700 : 400};">${escapeHtml(label)}</div>
     </td>`;
   }).join("");
 
   if (isLost) {
     return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;">
-      <tr><td style="padding:12px 16px;color:#b91c1c;font-size:13px;font-weight:600;">
-        ${lang === "vi" ? "Đơn hàng đang tạm hoãn." : "This order is currently on hold."}
-      </td></tr>
+      <tr><td style="padding:12px 16px;color:#b91c1c;font-size:13px;font-weight:600;">${lang === "vi" ? "Đơn hàng đang tạm hoãn." : "This order is currently on hold."}</td></tr>
     </table>`;
   }
-
-  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:18px 0 22px;">
-    <tr>${cells}</tr>
-  </table>`;
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:18px 0 22px;"><tr>${cells}</tr></table>`;
 }
 
-function statusPill(stageKey: string, lang: "en" | "vi"): string {
+export function statusPill(stageKey: string, lang: "en" | "vi"): string {
   const stage = getStage(stageKey);
   const label = lang === "vi" ? stage.label : stage.labelEn;
-  return `<div style="display:inline-block;background:${stage.color};color:#ffffff;font-size:12px;font-weight:700;padding:6px 14px;border-radius:999px;letter-spacing:.3px;">
-    ${escapeHtml(label.toUpperCase())}
-  </div>`;
+  return `<div style="display:inline-block;background:${stage.color};color:#ffffff;font-size:12px;font-weight:700;padding:6px 14px;border-radius:999px;letter-spacing:.3px;">${escapeHtml(label.toUpperCase())}</div>`;
 }
 
-function summaryTable(
-  rows: { label: string; value: string }[],
-  labelWidth = "42%",
-): string {
+export function summaryTable(rows: { label: string; value: string }[], header: string, labelWidth = "42%"): string {
   const body = rows
     .filter((r) => r.value && r.value !== "—")
     .map(
@@ -139,91 +147,85 @@ function summaryTable(
     )
     .join("");
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid ${LINE};border-radius:10px;overflow:hidden;">
-    <tr><td style="background:${SOFT};padding:10px 12px;font-size:12px;font-weight:700;color:${INK};letter-spacing:.4px;">ORDER DETAILS / THÔNG TIN ĐƠN HÀNG</td></tr>
+    <tr><td style="background:${SOFT};padding:10px 12px;font-size:12px;font-weight:700;color:${INK};letter-spacing:.4px;">${escapeHtml(header)}</td></tr>
     <tr><td style="padding:0;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0">${body}</table></td></tr>
   </table>`;
 }
 
-function nextStepBox(text: string, title: string): string {
-  if (!text) return "";
-  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#ecfeff;border-left:4px solid ${BRAND};border-radius:8px;margin-top:18px;">
+function calloutBox(title: string, html: string, tone: "brand" | "amber" = "brand"): string {
+  const c = tone === "brand" ? { bg: "#ecfeff", border: BRAND, fg: "#134e4a" } : { bg: "#fffbeb", border: "#d97706", fg: "#78350f" };
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${c.bg};border-left:4px solid ${c.border};border-radius:8px;margin-top:18px;">
     <tr><td style="padding:14px 16px;">
-      <div style="font-size:11px;font-weight:800;color:${BRAND};letter-spacing:.6px;margin-bottom:6px;">${escapeHtml(title)}</div>
-      <div style="font-size:13px;line-height:20px;color:#134e4a;">${escapeHtml(text)}</div>
+      <div style="font-size:11px;font-weight:800;color:${c.border};letter-spacing:.6px;margin-bottom:6px;">${escapeHtml(title)}</div>
+      <div style="font-size:13px;line-height:20px;color:${c.fg};">${html}</div>
     </td></tr>
   </table>`;
 }
 
+function signature(name: string | null, role: string): string {
+  return `<p style="font-size:14px;line-height:20px;margin:18px 0 0;">
+      <strong>${escapeHtml(name || COMPANY.name)}</strong><br/>
+      <span style="color:${MUTED};">${escapeHtml(role)} &middot; ${escapeHtml(COMPANY.name)}</span><br/>
+      <span style="color:${MUTED};">${escapeHtml(COMPANY.phone)} &middot; ${escapeHtml(COMPANY.email)}</span>
+    </p>`;
+}
+
+function paragraphs(list: string[]): string {
+  return list
+    .map(
+      (p) =>
+        `<p style="font-size:15px;line-height:24px;margin:12px 0 0;">${escapeHtml(p)}</p>`,
+    )
+    .join("");
+}
+
 /* ------------------------------------------------------------------ */
 /* EMAIL GỬI BUYER (tiếng Anh)                                        */
-/* LƯU Ý NGHIỆP VỤ: không bao giờ đưa tên/giá nhà cung cấp vào email  */
+/* KHÔNG bao giờ đưa tên/giá nhà cung cấp vào nội dung                */
 /* ------------------------------------------------------------------ */
-
 export function buildBuyerEmail(opts: {
   buyer: Buyer;
   stage: StageKey;
   note?: string | null;
 }): EmailPayload {
   const { buyer, stage } = opts;
-  const copy = STAGE_EMAIL_COPY[stage];
+  const copy = STAGE_CONTENT[stage].buyer;
   const name = buyer.contact_name?.trim() || buyer.company;
 
-  const summary = summaryTable([
-    { label: "Product", value: buyer.product ?? "—" },
-    { label: "Specification", value: buyer.spec ?? "—" },
-    { label: "Quantity", value: buyer.quantity ?? "—" },
-    { label: "Price term", value: buyer.incoterm ?? "—" },
-    { label: "Destination port", value: buyer.port ?? "—" },
-    {
-      label: "Expected shipment",
-      value: buyer.expected_ship_date
-        ? new Date(buyer.expected_ship_date).toLocaleDateString("en-GB", {
-            day: "2-digit",
-            month: "short",
-            year: "numeric",
-          })
-        : "To be confirmed",
-    },
-    { label: "Our reference", value: shortCode(buyer.id) },
-  ]);
+  const summary = summaryTable(
+    [
+      { label: "Product", value: buyer.product ?? "—" },
+      { label: "Specification", value: buyer.spec ?? "—" },
+      { label: "Quantity", value: buyer.quantity ?? "—" },
+      { label: "Price term", value: buyer.incoterm ?? "—" },
+      { label: "Destination port", value: buyer.port ?? "—" },
+      { label: "Expected shipment", value: fmtDate(buyer.expected_ship_date, "en-GB") || "To be confirmed" },
+      { label: "Our reference", value: shortCode(buyer.id) },
+    ],
+    "ORDER DETAILS",
+  );
 
   const body = `
     ${statusPill(stage, "en")}
     <p style="font-size:15px;line-height:24px;margin:18px 0 0;">Dear ${escapeHtml(name)},</p>
-    <p style="font-size:15px;line-height:24px;margin:12px 0 0;">${escapeHtml(copy.buyerBody)}</p>
+    ${paragraphs(copy.body.map((p) => fill(p, buyer)))}
     ${progressBar(stage, "en")}
     ${summary}
-    ${nextStepBox(copy.nextStep, "WHAT HAPPENS NEXT")}
-    ${
-      opts.note
-        ? `<p style="font-size:14px;line-height:22px;margin:18px 0 0;padding:12px 14px;background:${SOFT};border-radius:8px;color:#334155;"><strong>Message from our team:</strong><br/>${escapeHtml(opts.note)}</p>`
-        : ""
-    }
-    <p style="font-size:14px;line-height:22px;margin:22px 0 0;">
-      Please feel free to reply to this email if you need any clarification.<br/>
-      Best regards,
-    </p>
-    <p style="font-size:14px;line-height:20px;margin:14px 0 0;">
-      <strong>${escapeHtml(buyer.owner || COMPANY.name)}</strong><br/>
-      <span style="color:${MUTED};">Export Department &middot; ${escapeHtml(COMPANY.name)}</span><br/>
-      <span style="color:${MUTED};">${escapeHtml(COMPANY.phone)} &middot; ${escapeHtml(COMPANY.email)}</span>
-    </p>`;
+    ${calloutBox("WHAT HAPPENS NEXT", escapeHtml(fill(copy.action, buyer)))}
+    ${opts.note ? `<p style="font-size:14px;line-height:22px;margin:18px 0 0;padding:12px 14px;background:${SOFT};border-radius:8px;color:#334155;"><strong>Message from our team:</strong><br/>${escapeHtml(opts.note)}</p>` : ""}
+    <p style="font-size:14px;line-height:22px;margin:22px 0 0;">Please feel free to reply to this email if you need any clarification.<br/>Best regards,</p>
+    ${signature(buyer.owner, "Export Department")}`;
 
-  const subject = `[${shortCode(buyer.id)}] ${copy.buyerSubject}`;
+  const subject = `[${shortCode(buyer.id)}] ${fill(copy.subject, buyer)}`;
 
   return {
     subject,
-    html: shell({
-      title: subject,
-      body,
-      footer: `${escapeHtml(COMPANY.name)} &middot; ${escapeHtml(COMPANY.address)}<br/>
-        ${escapeHtml(COMPANY.phone)} &middot; <a href="${escapeHtml(COMPANY.website)}" style="color:${BRAND};text-decoration:none;">${escapeHtml(COMPANY.website)}</a>`,
-    }),
+    html: wrapEmailShell({ title: subject, body, preheader: fill(copy.body[0] ?? "", buyer) }),
     text: [
       subject,
       "",
       `Dear ${name},`,
-      copy.buyerBody,
+      ...copy.body.map((p) => fill(p, buyer)),
       "",
       `Status: ${getStage(stage).labelEn}`,
       "",
@@ -233,11 +235,11 @@ export function buildBuyerEmail(opts: {
       `Price term: ${buyer.incoterm ?? "-"}`,
       `Port: ${buyer.port ?? "-"}`,
       "",
-      copy.nextStep,
+      fill(copy.action, buyer),
       "",
       opts.note ? `Message from our team: ${opts.note}` : "",
       "",
-      `Best regards,`,
+      "Best regards,",
       `${buyer.owner || COMPANY.name} - Export Department, ${COMPANY.name}`,
       `${COMPANY.phone} | ${COMPANY.email}`,
     ]
@@ -248,9 +250,8 @@ export function buildBuyerEmail(opts: {
 
 /* ------------------------------------------------------------------ */
 /* EMAIL GỬI SUPPLIER (tiếng Việt)                                    */
-/* Mặc định ẨN DANH buyer – chỉ nêu thị trường + sản lượng            */
+/* Giao VIỆC CỤ THỂ + THỜI HẠN; mặc định ẨN DANH buyer                */
 /* ------------------------------------------------------------------ */
-
 export function buildSupplierEmail(opts: {
   buyer: Buyer;
   supplier: Supplier;
@@ -258,7 +259,7 @@ export function buildSupplierEmail(opts: {
   note?: string | null;
 }): EmailPayload {
   const { buyer, supplier, stage } = opts;
-  const copy = STAGE_EMAIL_COPY[stage];
+  const copy = STAGE_CONTENT[stage].supplier;
   const stageDef = getStage(stage);
   const hidden = buyer.hide_buyer_from_supplier !== false;
   const buyerLabel = hidden
@@ -272,70 +273,62 @@ export function buildSupplierEmail(opts: {
       { label: "Quy cách", value: buyer.spec ?? "—" },
       { label: "Số lượng", value: buyer.quantity ?? "—" },
       { label: "Điều kiện giao", value: buyer.incoterm ?? "—" },
-      {
-        label: "Ngày giao dự kiến",
-        value: buyer.expected_ship_date
-          ? new Date(buyer.expected_ship_date).toLocaleDateString("vi-VN")
-          : "Chờ xác nhận",
-      },
+      { label: "Ngày giao dự kiến", value: fmtDate(buyer.expected_ship_date, "vi-VN") || "Chờ xác nhận" },
       { label: "Mã đơn nội bộ", value: shortCode(buyer.id) },
     ],
+    "THÔNG TIN ĐƠN HÀNG",
     "38%",
   );
 
+  const tasks = copy.tasks
+    .map((t) => `<li style="margin:0 0 7px;padding-left:2px;">${escapeHtml(fill(t, buyer, supplier))}</li>`)
+    .join("");
+
+  const taskBox = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#fffbeb;border-left:4px solid #d97706;border-radius:8px;margin-top:18px;">
+    <tr><td style="padding:14px 16px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+        <td style="font-size:11px;font-weight:800;color:#d97706;letter-spacing:.6px;">VIỆC CẦN LÀM</td>
+        <td align="right" style="font-size:11px;font-weight:800;color:#b45309;">HẠN: ${escapeHtml(fill(copy.deadline, buyer, supplier))}</td>
+      </tr></table>
+      <ol style="margin:8px 0 0;padding-left:18px;font-size:13px;line-height:20px;color:#78350f;">${tasks}</ol>
+    </td></tr>
+  </table>`;
+
   const body = `
     ${statusPill(stage, "vi")}
-    <p style="font-size:15px;line-height:24px;margin:18px 0 0;">
-      Kính gửi Anh/Chị ${escapeHtml(supplier.contact_name || supplier.name)},
+    <p style="font-size:15px;line-height:24px;margin:18px 0 0;">Kính gửi Anh/Chị ${escapeHtml(supplier.contact_name || supplier.name)},</p>
+    <p style="font-size:14px;line-height:22px;margin:10px 0 0;color:${MUTED};">
+      Đơn <strong style="color:${INK};">${escapeHtml(shortCode(buyer.id))}</strong> · giai đoạn <strong style="color:${INK};">${escapeHtml(stageDef.label)}</strong>
     </p>
-    <p style="font-size:15px;line-height:24px;margin:12px 0 0;">
-      Đơn hàng <strong>${escapeHtml(shortCode(buyer.id))}</strong> do ${escapeHtml(COMPANY.name)} thực hiện
-      vừa chuyển sang trạng thái <strong>${escapeHtml(stageDef.label)}</strong>.
-    </p>
-    ${progressBar(stage, "vi")}
+    ${paragraphs(copy.body.map((p) => fill(p, buyer, supplier)))}
     ${summary}
-    ${nextStepBox(copy.supplierBody, "VIỆC CẦN PHỐI HỢP")}
-    ${
-      opts.note
-        ? `<p style="font-size:14px;line-height:22px;margin:18px 0 0;padding:12px 14px;background:${SOFT};border-radius:8px;color:#334155;"><strong>Ghi chú từ phòng sale:</strong><br/>${escapeHtml(opts.note)}</p>`
-        : ""
-    }
-    ${
-      hidden
-        ? `<p style="font-size:12px;line-height:18px;color:${MUTED};margin:16px 0 0;">
-            Thông tin buyer được giữ kín theo chính sách bảo mật của ${escapeHtml(COMPANY.name)}.
-            Mọi trao đổi về giá và hợp đồng vui lòng làm việc trực tiếp với phòng sale.
-          </p>`
-        : ""
-    }
-    <p style="font-size:14px;line-height:22px;margin:20px 0 0;">
-      Trân trọng,<br/>
-      <strong>${escapeHtml(buyer.owner || "Phòng Xuất khẩu")}</strong><br/>
-      <span style="color:${MUTED};">${escapeHtml(COMPANY.name)} &middot; ${escapeHtml(COMPANY.phone)}</span>
-    </p>`;
+    ${taskBox}
+    ${opts.note ? `<p style="font-size:14px;line-height:22px;margin:18px 0 0;padding:12px 14px;background:${SOFT};border-radius:8px;color:#334155;"><strong>Ghi chú từ phòng sale:</strong><br/>${escapeHtml(opts.note)}</p>` : ""}
+    ${hidden ? `<p style="font-size:12px;line-height:18px;color:${MUTED};margin:16px 0 0;">Thông tin buyer được giữ kín theo chính sách bảo mật của ${escapeHtml(COMPANY.name)}. Mọi trao đổi về giá và hợp đồng vui lòng làm việc trực tiếp với phòng sale.</p>` : ""}
+    <p style="font-size:14px;line-height:22px;margin:20px 0 0;">Trân trọng,</p>
+    ${signature(buyer.owner, "Phòng Xuất khẩu")}`;
 
-  const subject = `[${shortCode(buyer.id)}] Cập nhật đơn hàng – ${stageDef.label}`;
+  const subject = `[${shortCode(buyer.id)}] ${fill(copy.subject, buyer, supplier)}`;
 
   return {
     subject,
-    html: shell({
-      title: subject,
-      body,
-      footer: `${escapeHtml(COMPANY.name)} &middot; ${escapeHtml(COMPANY.address)}<br/>
-        ${escapeHtml(COMPANY.phone)} &middot; <a href="${escapeHtml(COMPANY.website)}" style="color:${BRAND};text-decoration:none;">${escapeHtml(COMPANY.website)}</a>`,
-    }),
+    html: wrapEmailShell({ title: subject, body, preheader: fill(copy.body[0] ?? "", buyer, supplier) }),
     text: [
       subject,
       "",
       `Kính gửi Anh/Chị ${supplier.contact_name || supplier.name},`,
-      `Đơn hàng ${shortCode(buyer.id)} vừa chuyển sang trạng thái: ${stageDef.label}.`,
+      `Đơn ${shortCode(buyer.id)} - giai đoạn: ${stageDef.label}`,
+      "",
+      ...copy.body.map((p) => fill(p, buyer, supplier)),
       "",
       `Buyer: ${buyerLabel}`,
       `Mặt hàng: ${buyer.product ?? "-"}`,
       `Quy cách: ${buyer.spec ?? "-"}`,
       `Số lượng: ${buyer.quantity ?? "-"}`,
       "",
-      copy.supplierBody,
+      "VIỆC CẦN LÀM:",
+      ...copy.tasks.map((t, i) => `${i + 1}. ${fill(t, buyer, supplier)}`),
+      `Hạn: ${fill(copy.deadline, buyer, supplier)}`,
       "",
       opts.note ? `Ghi chú từ phòng sale: ${opts.note}` : "",
       "",
@@ -346,4 +339,10 @@ export function buildSupplierEmail(opts: {
       .filter(Boolean)
       .join("\n"),
   };
+}
+
+/** Lấy lại phần nội dung bên trong khung email (dùng khi mở bản nháp / trả lời) */
+export function unwrapEmailShell(html: string): string {
+  const m = html.match(/<div class="vxt-inner">([\s\S]*)<\/div><\/td>/);
+  return m ? m[1] : html;
 }

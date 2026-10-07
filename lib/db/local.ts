@@ -6,7 +6,7 @@ import type {
   Activity,
   Buyer,
   BuyerInput,
-  EmailLog,
+  EmailMessage,
   Supplier,
   SupplierInput,
 } from "@/lib/types";
@@ -17,7 +17,7 @@ interface LocalShape {
   buyers: Buyer[];
   suppliers: Supplier[];
   activities: Activity[];
-  emails: EmailLog[];
+  messages: EmailMessage[];
 }
 
 const FILE = path.join(process.cwd(), "data", "local-db.json");
@@ -82,15 +82,27 @@ function seed(): LocalShape {
     return rows;
   });
 
-  return { buyers, suppliers, activities, emails: [] };
+  return { buyers, suppliers, activities, messages: [] };
 }
 
 function load(): LocalShape {
-  if (g.__veximLocal) return g.__veximLocal;
+  if (g.__veximLocal) {
+    const c = g.__veximLocal;
+    if (!Array.isArray(c.messages)) c.messages = [];
+    if (!Array.isArray(c.activities)) c.activities = [];
+    return c;
+  }
   try {
     if (fs.existsSync(FILE)) {
       const parsed = JSON.parse(fs.readFileSync(FILE, "utf8")) as LocalShape;
       if (Array.isArray(parsed.buyers) && Array.isArray(parsed.suppliers)) {
+        // tương thích ngược với file dữ liệu cũ
+        if (!Array.isArray(parsed.messages)) {
+          const legacy = parsed as unknown as { emails?: unknown[] };
+          parsed.messages = Array.isArray(legacy.emails) ? [] : [];
+          delete legacy.emails;
+        }
+        if (!Array.isArray(parsed.activities)) parsed.activities = [];
         g.__veximLocal = parsed;
         return parsed;
       }
@@ -188,7 +200,7 @@ export const localStore: DataStore = {
     mutate((db) => {
       db.buyers = db.buyers.filter((b) => b.id !== id);
       db.activities = db.activities.filter((a) => a.buyer_id !== id);
-      db.emails = db.emails.filter((e) => e.buyer_id !== id);
+      db.messages = db.messages.filter((e) => e.buyer_id !== id);
     });
   },
 
@@ -217,21 +229,38 @@ export const localStore: DataStore = {
     });
   },
 
-  async listEmails(limit = 100) {
-    const rows = [...load().emails].sort(
+  async listMessages(limit = 200) {
+    const rows = [...load().messages].sort(
       (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
     );
     return rows.slice(0, limit);
   },
-  async addEmail(input) {
+  async getMessage(id) {
+    return load().messages.find((m) => m.id === id) ?? null;
+  },
+  async addMessage(input) {
     return mutate((db) => {
-      const row: EmailLog = {
+      const row: EmailMessage = {
         ...input,
         id: randomUUID(),
         created_at: new Date().toISOString(),
+        sent_at: input.sent_at ?? null,
       };
-      db.emails.push(row);
+      db.messages.push(row);
       return row;
+    });
+  },
+  async updateMessage(id, patch) {
+    return mutate((db) => {
+      const row = db.messages.find((m) => m.id === id);
+      if (!row) throw new Error("Không tìm thấy email");
+      Object.assign(row, patch);
+      return row;
+    });
+  },
+  async deleteMessage(id) {
+    mutate((db) => {
+      db.messages = db.messages.filter((m) => m.id !== id);
     });
   },
 };

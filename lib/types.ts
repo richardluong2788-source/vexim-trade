@@ -71,19 +71,42 @@ export interface Activity {
   created_at: string;
 }
 
-export interface EmailLog {
+export type MessageKind = "auto" | "manual";
+export type MessageStatus = "draft" | "sent" | "failed" | "simulated";
+export type MessageDirection = "buyer" | "supplier";
+
+export interface Attachment {
+  name: string;
+  size: number;
+  type: string;
+  /** base64, không kèm prefix data: */
+  content: string;
+}
+
+/** Một email trong hộp thư: có thể là email tự động theo giai đoạn hoặc do đội ngũ tự soạn */
+export interface EmailMessage {
   id: string;
-  buyer_id: string;
+  buyer_id: string | null;
   supplier_id: string | null;
-  stage: string;
-  direction: "buyer" | "supplier" | "both";
+  kind: MessageKind;
+  /** chỉ có với email tự động theo giai đoạn */
+  stage: string | null;
+  direction: MessageDirection;
+  /** nhóm hội thoại: buyer|supplier + địa chỉ chính */
+  thread_id: string;
   subject: string;
-  recipients: string[];
+  to_emails: string[];
+  cc_emails: string[];
+  bcc_emails: string[];
   body_html: string;
-  status: "sent" | "failed" | "simulated";
+  body_text: string;
+  attachments: Attachment[];
+  status: MessageStatus;
   provider: "resend" | "local";
   error: string | null;
+  created_by: string | null;
   created_at: string;
+  sent_at: string | null;
 }
 
 export interface BuyerWithSupplier extends Buyer {

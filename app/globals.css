@@ -227,3 +227,46 @@
 .animate-pop {
   animation: pop-in 0.12s ease-out;
 }
+
+/* ---------- Trình soạn thảo email ---------- */
+.rich-editor:empty::before {
+  content: attr(data-placeholder);
+  color: var(--color-ink-400);
+  pointer-events: none;
+}
+.rich-editor ul {
+  list-style: disc;
+  padding-left: 1.4rem;
+  margin: 0.4rem 0;
+}
+.rich-editor ol {
+  list-style: decimal;
+  padding-left: 1.4rem;
+  margin: 0.4rem 0;
+}
+.rich-editor h2 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin: 0.7rem 0 0.3rem;
+}
+.rich-editor h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0.6rem 0 0.25rem;
+}
+.rich-editor blockquote {
+  border-left: 3px solid var(--color-ink-300);
+  padding-left: 0.75rem;
+  color: var(--color-ink-500);
+  margin: 0.5rem 0;
+}
+.rich-editor a {
+  color: var(--color-brand-700);
+  text-decoration: underline;
+}
+.rich-editor p {
+  margin: 0 0 0.55rem;
+}
+.rich-editor p:last-child {
+  margin-bottom: 0;
+}
