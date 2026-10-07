@@ -33,6 +33,10 @@ export interface Buyer {
   spec: string | null;
   quantity: string | null;
   target_price: string | null;
+  /** Phương thức thanh toán: T/T, L/C at sight, D/P... */
+  payment_method: string | null;
+  /** Điều khoản thanh toán: tỷ lệ cọc, thời điểm thanh toán phần còn lại */
+  payment_terms: string | null;
   incoterm: string | null;
   port: string | null;
   expected_ship_date: string | null;

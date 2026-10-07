@@ -119,6 +119,12 @@ export default async function BuyerDetailPage({
               <Info label="Mặt hàng" value={buyer.product} />
               <Info label="Số lượng" value={buyer.quantity} />
               <Info label="Giá mục tiêu" value={buyer.target_price} />
+              <Info label="Phương thức thanh toán" value={buyer.payment_method} />
+              <Info
+                label="Điều khoản thanh toán"
+                value={buyer.payment_terms}
+                className="col-span-2 sm:col-span-2"
+              />
               <Info label="Quy cách" value={buyer.spec} className="col-span-2 sm:col-span-3" />
             </dl>
             <div className="grid grid-cols-2 gap-px bg-ink-100 sm:grid-cols-3">

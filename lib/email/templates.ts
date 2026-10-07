@@ -40,6 +40,11 @@ function fmtDate(d: string | null | undefined, locale: string): string {
   return date.toLocaleDateString(locale, { day: "2-digit", month: "short", year: "numeric" });
 }
 
+function paymentStr(buyer: Buyer, fallback: string): string {
+  const s = [buyer.payment_method, buyer.payment_terms].filter(Boolean).join(" – ");
+  return s || fallback;
+}
+
 /** Thay placeholder {product}, {quantity}... bằng dữ liệu thật của đơn */
 export function fill(
   tpl: string,
@@ -54,6 +59,8 @@ export function fill(
     port: buyer.port || "your destination port",
     incoterm: buyer.incoterm || "FOB",
     shipdate: fmtDate(buyer.expected_ship_date, "en-GB") || "to be confirmed",
+    payment: paymentStr(buyer, "as agreed"),
+    payment_vi: paymentStr(buyer, "theo thỏa thuận"),
     ref: shortCode(buyer.id),
     company: buyer.company,
     supplier: supplier?.name ?? "our production partner",

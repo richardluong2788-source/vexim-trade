@@ -12,6 +12,7 @@ import { useToast } from "@/components/toast";
 import { StageDot } from "@/components/stage-select";
 
 const INCOTERMS = ["EXW", "FOB", "CFR", "CIF", "DAP", "DDP", "FCA"];
+const PAYMENT_METHODS = ["T/T", "L/C at sight", "L/C trả chậm", "D/P", "D/A", "CAD"];
 const PRIORITIES = [
   { value: "high", label: "Cao" },
   { value: "normal", label: "Bình thường" },
@@ -33,6 +34,8 @@ function init(b?: Buyer | null): FormState {
     spec: b?.spec ?? "",
     quantity: b?.quantity ?? "",
     target_price: b?.target_price ?? "",
+    payment_method: b?.payment_method ?? "",
+    payment_terms: b?.payment_terms ?? "",
     incoterm: b?.incoterm ?? "FOB",
     port: b?.port ?? "",
     expected_ship_date: b?.expected_ship_date ?? "",
@@ -211,6 +214,32 @@ export function BuyerForm({
               value={v("target_price")}
               onChange={(e) => set("target_price", e.target.value)}
               placeholder="VD: USD 640 / MT"
+            />
+          </Field>
+          <Field label="Phương thức thanh toán">
+            <select
+              className="input"
+              value={v("payment_method")}
+              onChange={(e) => set("payment_method", e.target.value)}
+            >
+              <option value="">— Chưa chốt —</option>
+              {PAYMENT_METHODS.map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field
+            label="Điều khoản thanh toán"
+            hint="Tỷ lệ cọc và thời điểm trả phần còn lại"
+            className="sm:col-span-2"
+          >
+            <input
+              className="input"
+              value={v("payment_terms")}
+              onChange={(e) => set("payment_terms", e.target.value)}
+              placeholder="VD: 30% cọc, 70% khi nhận copy B/L"
             />
           </Field>
           <Field label="Điều kiện giao">

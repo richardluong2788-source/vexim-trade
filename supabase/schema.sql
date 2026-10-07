@@ -46,6 +46,8 @@ create table if not exists public.buyers (
   spec                      text,
   quantity                  text,
   target_price              text,
+  payment_method            text,
+  payment_terms             text,
   incoterm                  text,
   port                      text,
   expected_ship_date        date,

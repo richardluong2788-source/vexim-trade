@@ -61,6 +61,8 @@ function parseBuyerInput(raw: Partial<BuyerInput> & Record<string, unknown>): Bu
     spec: str(raw.spec),
     quantity: str(raw.quantity),
     target_price: str(raw.target_price),
+    payment_method: str(raw.payment_method),
+    payment_terms: str(raw.payment_terms),
     incoterm: str(raw.incoterm),
     port: str(raw.port),
     expected_ship_date: str(raw.expected_ship_date),

@@ -8,6 +8,7 @@ import type { StageKey } from "@/lib/pipeline";
  *
  * Placeholder được thay bằng dữ liệu thật của đơn:
  *   {product} {quantity} {spec} {country} {port} {incoterm} {shipdate} {ref} {supplier}
+ *   {payment} (EN) / {payment_vi} (VI) – phương thức + điều khoản thanh toán
  */
 export interface BuyerCopy {
   subject: string;
@@ -135,6 +136,7 @@ export const STAGE_CONTENT: Record<StageKey, StageCopy> = {
       subject: "Order confirmed – deposit received for {product}",
       body: [
         "We are pleased to confirm that your Proforma Invoice has been signed and the deposit has been received. Your order is now formally in our execution schedule.",
+        "For your records, payment for this order follows the agreed terms: {payment}.",
         "From this point you will receive an update at every milestone until the goods reach {port}.",
       ],
       action:
@@ -150,6 +152,7 @@ export const STAGE_CONTENT: Record<StageKey, StageCopy> = {
         "Xác nhận ngày bắt đầu và ngày hoàn thành sản xuất",
         "Gửi kế hoạch sản xuất chi tiết theo từng tuần",
         "Chốt lại quy cách đóng gói và nhãn mác theo yêu cầu của đơn",
+        "Đối soát tiền cọc và nắm điều khoản thanh toán phần còn lại ({payment_vi})",
       ],
       deadline: "Xác nhận trong 48 giờ",
     },
