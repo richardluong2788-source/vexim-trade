@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import {
   CalendarClock,
   Check,
+  Eye,
   Factory,
   Globe2,
   AtSign,
@@ -16,17 +17,14 @@ import {
 
 import { getBuyerWithSupplier } from "@/lib/queries";
 import { getStore } from "@/lib/db";
-import { isStage, stageIndex, FUNNEL_STAGES, getStage } from "@/lib/pipeline";
-import { buildBuyerEmail, buildSupplierEmail } from "@/lib/email/templates";
+import { stageIndex, FUNNEL_STAGES } from "@/lib/pipeline";
 import { COMPANY } from "@/lib/config";
 import { Breadcrumbs, Card, EmptyState, cx, formatDate, formatMoney, relativeTime } from "@/components/ui";
 import { PageHeader } from "@/components/page-header";
 import { StageBadge, StageSelect } from "@/components/stage-select";
-import { EmailPreview } from "@/components/email-preview";
 import {
   DeleteBuyerButton,
   NoteBox,
-  SendUpdateNow,
   SupplierPicker,
 } from "@/components/buyer-detail-actions";
 
@@ -53,16 +51,7 @@ export default async function BuyerDetailPage({
     ? (suppliers.find((s) => s.id === buyer.supplier_id) ?? null)
     : null;
 
-  const previewBuyer = isStage(buyer.stage)
-    ? buildBuyerEmail({ buyer, stage: buyer.stage })
-    : null;
-  const previewSupplier =
-    isStage(buyer.stage) && supplier
-      ? buildSupplierEmail({ buyer, supplier, stage: buyer.stage })
-      : null;
-
   const idx = stageIndex(buyer.stage);
-  const stageDef = getStage(buyer.stage);
 
   return (
     <>
@@ -90,6 +79,10 @@ export default async function BuyerDetailPage({
               }}
               className="min-w-[190px]"
             />
+            <Link href={`/templates?buyer=${buyer.id}`} className="btn btn-ghost">
+              <Eye className="h-4 w-4" />
+              Xem trước email
+            </Link>
             <Link href={`/mail/compose?to=${buyer.id}&dir=buyer`} className="btn btn-primary">
               <Mail className="h-4 w-4" />
               Soạn email
@@ -200,47 +193,6 @@ export default async function BuyerDetailPage({
             </div>
           </Card>
 
-          {/* Gửi cập nhật */}
-          <Card>
-            <div className="border-b border-ink-200 px-4 py-3">
-              <h2 className="text-[15px] font-bold text-ink-900">Gửi email cập nhật tiến độ</h2>
-              <p className="mt-0.5 text-xs text-ink-500">
-                Trạng thái hiện tại: <strong className="text-ink-800">{stageDef.label}</strong>
-              </p>
-            </div>
-            <div className="p-4">
-              <SendUpdateNow buyer={buyer} />
-            </div>
-          </Card>
-
-          {/* Xem trước email */}
-          <div>
-            <h2 className="mb-2 text-[15px] font-bold text-ink-900">Xem trước nội dung email</h2>
-            <EmailPreview
-              tabs={[
-                {
-                  id: "buyer",
-                  label: "Gửi buyer (EN)",
-                  subject: previewBuyer?.subject ?? "",
-                  recipients: [buyer.email, buyer.cc_emails].filter(Boolean) as string[],
-                  html: previewBuyer?.html ?? "",
-                  disabled: !previewBuyer,
-                  disabledReason: "Không tạo được nội dung cho trạng thái này.",
-                },
-                {
-                  id: "supplier",
-                  label: "Gửi NCC (VI)",
-                  subject: previewSupplier?.subject ?? "",
-                  recipients: supplier?.email ? [supplier.email] : [],
-                  html: previewSupplier?.html ?? "",
-                  disabled: !previewSupplier,
-                  disabledReason: supplier
-                    ? "Nhà cung cấp chưa có email."
-                    : "Chưa gắn nhà cung cấp cho đơn này — ở giai đoạn đầu điều này là bình thường, email chỉ gửi tới buyer.",
-                },
-              ]}
-            />
-          </div>
         </div>
 
         {/* Cột phải */}
